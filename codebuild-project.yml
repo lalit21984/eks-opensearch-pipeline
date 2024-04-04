@@ -1,0 +1,609 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CodeBuild Project for environment accounts to configure and deploy EKS Pattern -hpl-cluster
+Parameters:
+  pOceanminVcpu:
+    Type: String
+    Description: spot ocean minvcpu
+    Default: none
+  pminInstanceCount:
+    Type: String
+    Description: spotocean minvcpu
+    Default: none
+  pProjectName:
+    Type: String
+  pIntraSubnetIds:
+    Type: String
+  pPubSubnetIds:
+    Type: String
+  pAcmCertificate:
+    Type: String
+  pReferenceAnnotation:
+    Type: String
+  pReferenceFacing:
+    Type: String           
+  pHostedZoneId:
+    Type: String           
+  # Spot Ocean Enable
+  pAppSubnetCIDR:
+    Type: String
+  pEKSPodSubnetCIDR:
+    Type: String
+  pIntraSubnetCIDR:
+    Type: String
+  pUseSpotOcean:
+    Description: Use Spot ocean for EKS Cluster Autoscaling
+    Type: String
+  # Proxy Host
+  pProxyHost:
+    Description: Proxy Host Name
+    Type: String
+  # Istio Installation
+  pUseIstio:
+    Description: Istio ServiceMesh enable
+    Type: String
+    Default: No
+  pEKSPodSubnetCIDR1:
+    Type: String
+  pAppSubnetCIDR1:
+    Type: String
+  pEKSPodSubnetCIDR2:
+    Type: String
+  pAppSubnetCIDR2:
+    Type: String
+  pEKSPodSubnetCIDR3:
+    Type: String
+  pAppSubnetCIDR3:
+    Type: String
+  pUseSysdig:
+    Description: Sysdig agent enable
+    Type: String
+    Default: Yes
+### Unused Parameters
+  pK8sVersion:
+    Type: String
+  pNodeInstanceType:
+    Type: String
+  pEnvironment:
+    Type: String
+  pElbArn:
+    Type: String
+    Default: "0"
+  pElbGax:
+    Type: String
+    Default: "0"
+  pSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: List<AWS::EC2::Subnet::Id>  
+  pAppSubnetIds:
+    Type: String
+  pReferencePortNumber:
+    Type: String    
+  pEKSPodSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: List<AWS::EC2::Subnet::Id>
+  pLbSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: String
+    Default: sub-0
+  pVpcId:
+    Type: String
+  pTagPactCustomerData:
+    Type: String
+  pTagPactDataclass:
+    Type: String
+  pTagPactLaunchedBy:
+    Type: String
+  pTagPactLifecycle:
+    Type: String
+  pTagPactPurpose:
+    Type: String
+  pTagPactResourceCustodian:
+    Type: String
+  pTagPactTeamOwner:
+    Type: String
+  pTagPactVastId:
+    Type: String
+  pTagPactVsad:
+    Type: String
+  pTagPactRole:
+    Type: String
+  pEKSClusterSecurityGroup:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: 'pm-hpl-cluster-ClusterSecurityGroup'
+  pRoverSecurityGroup:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: 'pm-hpl-cluster-Rover-Sg'
+  pSpotInstToken:
+    Description: The API Token for Spot.io
+    NoEcho: 'true'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/sharedservices/us-east-1/spotinst/token'
+  pSpotInstAccountId:
+    Description: Spot Account ID
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/sharedservices/us-east-1/spotinst/account-id'
+  pDefaultAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: '/sharedservices/us-east-1/pact-amazon-linux-2-eks/ami-id'
+  pBastionHostAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: Bastion Host AMI ID (eg /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2)
+    Default: /sharedservices/us-east-1/pact-amazon-linux-2/ami-id 
+Resources:
+  # CodeBuild
+  rCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${pProjectName}-Project
+      Description: CodeBuild Project for environment accounts to configure and deploy Spinnaker
+      ServiceRole: !Sub arn:aws:iam::${AWS::AccountId}:role/CodePipeline-Action
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: false
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Sub |
+          version: 0.2
+          env:
+            shell: bash
+            parameter-store:
+              CONFLUENT_LICENSE: /sharedservices/${AWS::Region}/sysdig/confluent-license-key
+              NGINX_LICENSE_TOKEN: /sharedservices/${AWS::Region}/nginx/nginx-token
+              SPOT_CONTROLLER_TOKEN: /sharedservices/${AWS::Region}/spotinst/controller-token
+              SPOT_ACCOUNT_ID: /sharedservices/${AWS::Region}/spotinst/account-id
+              SPLUNK_ACCESS_TOKEN: /sharedservices/${AWS::Region}/splunk/access-token
+              SYSDIG_ACCESS_KEY: /sharedservices/${AWS::Region}/sysdig/access-key
+              CONFLUENT_LICENSE_KEY: /sharedservices/${AWS::Region}/sysdig/confluent-license-key
+            variables:
+              http_proxy: http://${pProxyHost}:8080
+              https_proxy: http://${pProxyHost}:8080
+              HTTP_PROXY: http://${pProxyHost}:8080
+              HTTPS_PROXY: http://${pProxyHost}:8080
+              no_proxy: '169.254.169.254,169.254.170.2,127.0.0.1/8,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.${AWS::Region}.amazonaws.com,sts.${AWS::Region}.amazonaws.com,cloudformation.${AWS::Region}.amazonaws.com,*.bullseye.com'
+            exported-variables:
+              - http_proxy
+              - https_proxy
+              - HTTP_PROXY
+              - HTTPS_PROXY
+              - no_proxy
+          phases:
+            install:
+              runtime-versions:
+                java: corretto11
+              commands:
+                - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                - unzip awscliv2.zip
+                - sudo ./aws/install --update
+                - curl -v -o aws-iam-authenticator https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator              
+                - chmod +x ./aws-iam-authenticator
+                - mkdir -p ~/bin && cp ./aws-iam-authenticator ~/bin/aws-iam-authenticator && export PATH=~/bin:$PATH
+                - curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+                - chmod +x kubectl
+                - mv ./kubectl ~/bin/kubectl
+                - echo Download and configure eksctl
+                - curl -LO "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz"
+                - tar -xzvf eksctl_Linux_amd64.tar.gz
+                - mv ./eksctl ~/bin/eksctl
+                - echo Download and install Helm
+                - curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
+                - chmod 700 get_helm.sh
+                - bash ./get_helm.sh
+            build:
+              run-as: root
+              commands:
+                - export EKS_CLUSTER=${pProjectName}-${AWS::Region}
+                - export BASTION_ROLE_ARN="{{resolve:ssm:${pProjectName}-Bastion-Role}}"
+                - export SUPER_ADMIN_ROLE="{{resolve:ssm:${pProjectName}-SuperAdmin-Role}}"
+                - export NODE_ROLE_ARN="{{resolve:ssm:${pProjectName}-Node-Role}}"
+                - export NODE_ROLE=`echo $NODE_ROLE_ARN | cut -d'/' -f2`
+                - echo $NODE_ROLE
+                - env
+                - export LB_CTL_ROLE_ARN="{{resolve:ssm:${pProjectName}-Lb-Controller-Role}}"
+                - export LB_SG="{{resolve:ssm:${pProjectName}-Lb-Sg}}"
+                - export ENV="${pEnvironment}"
+                - |
+                  export PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
+                  export PACT_PROXY_PROD=proxy.pact.verizon.com
+                  export PACT_PROXY_PORT=8080
+                  if [ $ENV = "prod" ] || [ $ENV = "depl" ]  ; then
+                    export PACT_PROXY_HOST=$PACT_PROXY_PROD
+                  else
+                    export PACT_PROXY_HOST=$PACT_PROXY_NONPROD
+                  fi
+                  export PROXY=$PACT_PROXY_HOST:$PACT_PROXY_PORT
+                - echo $BASTION_ROLE_ARN
+                - echo $NODE_ROLE_ARN
+                - echo $LB_CTL_ROLE_ARN
+                - export REGION=${AWS::Region}
+                - |
+                  export VPC_CIDR=$(aws ec2 describe-vpcs --vpc-ids ${pVpcId} --query Vpcs[].CidrBlock --output text)
+                - echo "Configuring kubectl"
+                - aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+                - echo "Testing kubectl"
+                - kubectl get nodes
+                - kubectl get pods --all-namespaces
+                - echo "Adding Bastion Host to aws-auth map"
+                - |
+                  if [ `kubectl describe -n kube-system configmap/aws-auth | grep -c "$BASTION_ROLE_ARN"` -ne 0 ]; then
+                    echo "Role is present, skipping"
+                  else
+                    echo "Role is not present, adding"
+                    eksctl create iamidentitymapping --cluster $EKS_CLUSTER --arn $BASTION_ROLE_ARN --group system:masters --username system:bastion:{{SessionName}} --region $REGION
+                  fi
+                - echo "Adding SuperAdmin to aws-auth map"
+                - |
+                  if [ `kubectl describe -n kube-system configmap/aws-auth | grep -c "$SUPER_ADMIN_ROLE"` -ne 0 ]; then
+                    echo "Role is present, skipping"
+                  else
+                    echo "Role is not present, adding"
+                    eksctl create iamidentitymapping --cluster $EKS_CLUSTER --arn $SUPER_ADMIN_ROLE --group system:masters --username admin --region $REGION
+                  fi
+                - |
+                  if [ `kubectl describe -n kube-system configmap/aws-auth | grep -c "$NODE_ROLE_ARN"` -eq 0 ]; then
+                    echo "Node Role is not present, adding"
+                    eksctl create iamidentitymapping --cluster $EKS_CLUSTER --arn $NODE_ROLE_ARN --group system:bootstrappers --username system:node:{{EC2PrivateDNSName}} --region $REGION
+                    eksctl create iamidentitymapping --cluster $EKS_CLUSTER --arn $NODE_ROLE_ARN --group system:nodes --username system:node:{{EC2PrivateDNSName}} --region $REGION
+                  else
+                    echo "Node Role is present, skipping"
+                  fi        
+                - echo "Verify Roles are as expected"
+                - kubectl describe -n kube-system configmap/aws-auth
+                - eksctl utils associate-iam-oidc-provider --cluster $EKS_CLUSTER --region $REGION --approve
+                - echo "get OIDC"
+                - export oidc_id=$(aws eks describe-cluster --name $EKS_CLUSTER --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
+                - export ServiceRoleARN='{{resolve:ssm:${pProjectName}-Node-Role}}'
+                - export ServiceCNIRoleARN='{{resolve:ssm:${pProjectName}-Node-Role}}'
+                - OIDC_ID=$(aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4)
+                - export EKSPodSubnetId0='{{resolve:ssm:${pProjectName}-EKSPodSubnetId0}}'
+                - export EKSPodSubnetId1='{{resolve:ssm:${pProjectName}-EKSPodSubnetId1}}'
+                - export EKSPodSubnetId2='{{resolve:ssm:${pProjectName}-EKSPodSubnetId2}}'
+                - export ClusterSecurityGroup='{{resolve:ssm:${pProjectName}-ClusterSecurityGroup}}'
+                - export R1=${AWS::Region}a
+                - export R2=${AWS::Region}b
+                - export R3=${AWS::Region}c
+                  # adding eks container insights eks-addon
+                - |
+                  if aws eks list-addons --cluster-name $EKS_CLUSTER | grep -q "amazon-cloudwatch-observability"; then
+                    echo "observability addon is present, skipping"
+                  else
+                    echo "observability addon not present, adding"
+                    aws iam attach-role-policy \
+                    --role-name $NODE_ROLE \
+                    --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy  \
+                    --policy-arn arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+                    aws eks create-addon --addon-name amazon-cloudwatch-observability --cluster-name $EKS_CLUSTER
+                  fi
+                - |
+                  cat <<EOF  | kubectl apply -f -
+                  apiVersion: crd.k8s.amazonaws.com/v1alpha1
+                  kind: ENIConfig
+                  metadata:
+                    name: $R1
+                  spec:
+                    securityGroups: 
+                      - $ClusterSecurityGroup
+                    subnet: $EKSPodSubnetId0
+                  EOF
+                - |
+                  cat <<EOF | kubectl apply -f -
+                  apiVersion: crd.k8s.amazonaws.com/v1alpha1
+                  kind: ENIConfig
+                  metadata:
+                    name: $R2
+                  spec:
+                    securityGroups: 
+                      - $ClusterSecurityGroup
+                    subnet: $EKSPodSubnetId1
+                  EOF
+                - |
+                  cat <<EOF | kubectl apply -f -
+                  apiVersion: crd.k8s.amazonaws.com/v1alpha1
+                  kind: ENIConfig
+                  metadata:
+                    name: $R3
+                  spec:
+                    securityGroups: 
+                      - $ClusterSecurityGroup
+                    subnet: $EKSPodSubnetId2
+                  EOF
+                - |
+                  export REGION=${AWS::Region}
+                  envsubst <  app/addons/aws-k8s-cni.yml.template >  app/addons/aws-k8s-cni.yml
+                  echo "kubectl applying aws-k8s-cni.yml"
+                  cat app/addons/aws-k8s-cni.yml
+                  kubectl apply -f app/addons/aws-k8s-cni.yml
+                  echo "Update coredns image to 602401143452.dkr.ecr.$REGION.amazonaws.com/eks/coredns:v1.10.1-eksbuild.6"
+                  kubectl set image deployment.apps/coredns -n kube-system  coredns=602401143452.dkr.ecr.$REGION.amazonaws.com/eks/coredns:v1.10.1-eksbuild.6
+                  echo "Update kube-proxy image to 602401143452.dkr.ecr.$REGION.amazonaws.com/eks/kube-proxy:v1.28.4-minimal-eksbuild.1"
+                  kubectl set image daemonset.apps/kube-proxy -n kube-system kube-proxy=602401143452.dkr.ecr.$REGION.amazonaws.com/eks/kube-proxy:v1.28.4-minimal-eksbuild.1
+                - |
+                  cat <<EOF | kubectl apply -f -
+                  apiVersion: v1
+                  kind: ConfigMap
+                  metadata:
+                     name: proxy-environment-variables
+                     namespace: kube-system
+                  data:
+                     HTTP_PROXY: http://$PROXY
+                     HTTPS_PROXY: http://$PROXY
+                     NO_PROXY: 10.100.0.0/16,localhost,127.0.0.1,$VPC_CIDR,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,.local,s3.amazonaws.com,.eks.amazonaws.com,.s3.${AWS::Region}.amazonaws.com,api.ecr.${AWS::Region}.amazonaws.com,dkr.ecr.${AWS::Region}.amazonaws.com,ec2.${AWS::Region}.amazonaws.com,*.bullseye.com
+                     http_proxy: http://$PROXY
+                     https_proxy: http://$PROXY
+                     no_proxy: 10.100.0.0/16,localhost,127.0.0.1,$VPC_CIDR,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,.local,s3.amazonaws.com,.eks.amazonaws.com,.s3.${AWS::Region}.amazonaws.com,api.ecr.${AWS::Region}.amazonaws.com,dkr.ecr.${AWS::Region}.amazonaws.com,ec2.${AWS::Region}.amazonaws.com,*.bullseye.com
+                  EOF
+                - |
+                  cat <<EOF >patch-kube-proxy.yaml
+                  spec:
+                    template:
+                      spec:
+                        containers:
+                        - name: kube-proxy
+                          envFrom:
+                          - configMapRef:
+                              name: proxy-environment-variables
+                  EOF
+                - |
+                  if kubectl describe daemonset kube-proxy -n kube-system  | grep -q "proxy-environment-variables"; then
+                    echo "proxy env is present, skipping"
+                  else
+                    kubectl patch daemonset kube-proxy --patch-file patch-kube-proxy.yaml -n kube-system
+                  fi    
+                - eksctl create iamserviceaccount --cluster $EKS_CLUSTER --name ebs-csi-controller-irsa --namespace kube-system --attach-policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy --role-name "$EKS_CLUSTER-ebscsidriver" --override-existing-serviceaccounts --approve
+                - |
+                  helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+                  helm upgrade --install aws-ebs-csi-driver aws-ebs-csi-driver/aws-ebs-csi-driver \
+                    --version=2.21.0 \
+                    --namespace kube-system \
+                    --set controller.serviceAccount.create=false \
+                    --set controller.serviceAccount.name=ebs-csi-controller-irsa
+                - |
+                  policy_exist=$(aws iam list-policies --query 'Policies[?PolicyName==`AmazonEKS_EFS_CSI_Driver_Policy`]')
+                  sleep 15
+                  if [[ $policy_exist == "[]" ]]; then
+                    curl -o iam-policy-efs.json https://raw.githubusercontent.com/kubernetes-sigs/aws-efs-csi-driver/master/docs/iam-policy-example.json
+                    aws iam create-policy --policy-name AmazonEKS_EFS_CSI_Driver_Policy --policy-document file://iam-policy-efs.json
+                  else
+                    echo "policy already exist"
+                  fi
+                  eksctl create iamserviceaccount --cluster $EKS_CLUSTER --name efs-csi-controller-irsa --namespace kube-system --attach-policy-arn arn:aws:iam::${AWS::AccountId}:policy/AmazonEKS_EFS_CSI_Driver_Policy --role-name "$EKS_CLUSTER-efscsidriver" --override-existing-serviceaccounts --approve
+                  helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+                  helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
+                    --namespace kube-system \
+                    --set controller.serviceAccount.create=false \
+                    --set controller.serviceAccount.name=efs-csi-controller-irsa
+                - |
+                  cat <<EOF | kubectl apply -f -
+                  apiVersion: v1
+                  kind: ServiceAccount
+                  metadata:
+                    labels:
+                      app.kubernetes.io/component: controller
+                      app.kubernetes.io/name: aws-load-balancer-controller
+                    name: aws-load-balancer-controller
+                    namespace: kube-system
+                    annotations:
+                      eks.amazonaws.com/role-arn: $LB_CTL_ROLE_ARN
+                  EOF
+                - echo "Verify sa created as expected"
+                - kubectl describe -n kube-system sa aws-load-balancer-controller
+                # - |
+                #   if aws eks list-addons --cluster-name $EKS_CLUSTER | grep -q "amazon-cloudwatch-observability"; then
+                #     echo "observability addon is present, skipping"
+                #   else
+                #     echo "observability addon not present, adding"
+                #     aws eks create-addon --addon-name amazon-cloudwatch-observability --cluster-name $EKS_CLUSTER
+                #   fi
+                - echo "Installing AWS Load Balancer Controller"
+                - helm repo add eks https://aws.github.io/eks-charts
+                - helm repo update
+                - |
+                  if kubectl get pods -n kube-system | grep -q "aws-load-balancer-controller"; then
+                    echo "aws-load-balancer-controller installed skipping 1"
+                  else
+                    helm upgrade -i aws-load-balancer-controller eks/aws-load-balancer-controller \
+                    -n kube-system \
+                    --set clusterName=$EKS_CLUSTER \
+                    --set serviceAccount.create=false \
+                    --set image.repository=602401143452.dkr.ecr.$REGION.amazonaws.com/amazon/aws-load-balancer-controller \
+                    --set serviceAccount.name=aws-load-balancer-controller
+                  fi
+                - echo "Verify that the controller is installed1"
+                - kubectl get deployment -n kube-system aws-load-balancer-controller
+                - kubectl get pods -n kube-system
+                - sed -i.bak "s|EKS_CLUSTER|$EKS_CLUSTER|g" app/k8s/demo-app-priv.yml
+                - sed -i.bak "s|EKS_CLUSTER|$EKS_CLUSTER|g" app/k8s/demo-app-pub.yml
+                - sed -i.bak "s|LB_SG|$LB_SG|g" app/k8s/demo-app-priv.yml
+                - sed -i.bak "s|LB_SG|$LB_SG|g" app/k8s/demo-app-pub.yml
+                - |
+                  if [ "${pLbSubnetIds}" == "sub-0" ]; then
+                    echo "Cluster Subnets used"
+                    cat app/k8s/demo-app-priv.yml
+                    kubectl apply -f app/k8s/demo-app-priv.yml
+                    sleep 10
+                    LB=$(kubectl get ingress -A -o json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["items"][0]["status"]["loadBalancer"]["ingress"][0]["hostname"])')
+                    echo $LB
+                  else
+                    echo "LB Subnets used"
+                    export LB_SN=${pLbSubnetIds}
+                    sed -i.bak "s|LB_SN|$LB_SN|g" app/k8s/demo-app-pub.yml
+                    cat app/k8s/demo-app-pub.yml
+                    kubectl apply -f app/k8s/demo-app-pub.yml
+                    sleep 10
+                    LB=$(kubectl get ingress -A -o json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["items"][0]["status"]["loadBalancer"]["ingress"][0]["hostname"])')
+                    echo $LB
+                    LBARN1=$(aws elbv2 describe-load-balancers | jq '.LoadBalancers[] | select(.DNSName =='\"$LB\"') | .LoadBalancerArn')
+                    LBARN=$(sed -e 's/^"//' -e 's/"$//' <<<"$LBARN1")
+                    echo $LBARN
+                    if [ "${pElbGax}" == "0" ]; then
+                      echo "GAX will not be created for the ALB"
+                    else
+                      aws cloudformation deploy --template-file app/gax.yml --stack-name ${pProjectName}-gax --capabilities CAPABILITY_NAMED_IAM --parameter-overrides pElbArn=$LBARN
+                    fi
+                  fi
+                - |
+                  if [ "${pElbArn}" == "0" ]; then
+                    echo "ALB is blank, GAX will not be created"
+                  else
+                    echo ${pElbArn}
+                    aws cloudformation deploy --template-file app/gax.yml --stack-name ${pProjectName}-gax --capabilities CAPABILITY_NAMED_IAM --parameter-overrides pElbArn=${pElbArn}
+                  fi
+                - |
+                  if [ "${pUseSpotOcean}" == "Yes" ]; then
+                    helm repo add spotinst https://spotinst.github.io/spotinst-kubernetes-helm-charts
+                    helm repo update
+                    helm upgrade -i spot-controller spotinst/spotinst-kubernetes-cluster-controller \
+                      --set spotinst.proxyUrl="http://$PROXY" \
+                      --set spotinst.token=$SPOT_CONTROLLER_TOKEN \
+                      --set spotinst.account=$SPOT_ACCOUNT_ID \
+                      --set metrics-server.deployChart=false \
+                      --set spotinst.clusterIdentifier=$EKS_CLUSTER
+                    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+                  else
+                    echo "spot ocean not used"
+                  fi 
+                - |
+                  if [ "${pUseSysdig}" == "Yes" ]; then
+                    export CLUSTER_NAME="$EKS_CLUSTER-${pEnvironment}-${pTagPactVastId}-${pTagPactVsad}"
+                    export VSAD_ID="${pTagPactVsad}"
+                    export VAST_ID="${pTagPactVastId}"
+                    export HTTPPROXY="${pProxyHost}"
+                    envsubst < app/sysdig/sysdig.values.yaml > app/sysdig/sysdig.values.output.yaml
+                    kubectl create ns sysdig-agent || true
+                    helm repo add sysdig https://charts.sysdig.com
+                    helm repo update
+                    helm upgrade -i sysdig-agent --namespace sysdig-agent -f app/sysdig/sysdig.values.output.yaml \
+                      --set global.clusterConfig.name=$CLUSTER_NAME \
+                      --set global.sysdig.region=us3 \
+                      --set global.sysdig.accessKey=$SYSDIG_ACCESS_KEY \
+                      --set agent.sysdig.settings.tags="cluster:hpl-eks-dev-24922-d4jv\,vz-vsadid:d4jv\,vz-vastid:24922" \
+                      --set agent.image.tag=12.17.0 \
+                      --set nodeAnalyzer.nodeAnalyzer.runtimeScanner.image.tag=1.6.2 sysdig/sysdig-deploy
+                  else
+                    echo "sysdig not used"
+                  fi
+                - |
+                  helm repo add splunk-otel-collector-chart https://signalfx.github.io/splunk-otel-collector-chart
+                  helm repo update
+                  helm upgrade -i splunk-otel-collector splunk-otel-collector-chart/splunk-otel-collector \
+                  --set cloudProvider='aws' \
+                  --set distribution='eks' \
+                  --set splunkObservability.accessToken=$SPLUNK_ACCESS_TOKEN \
+                  --set clusterName=$EKS_CLUSTER \
+                  --set agent.extraEnvs[0].name=HTTP_PROXY,agent.extraEnvs[0].value=http://$PROXY \
+                  --set agent.extraEnvs[1].name=HTTPS_PROXY,agent.extraEnvs[1].value=http://$PROXY \
+                  --set agent.extraEnvs[2].name=http_proxy,agent.extraEnvs[2].value=http://$PROXY \
+                  --set agent.extraEnvs[3].name=https_proxy,agent.extraEnvs[3].value=http://$PROXY \
+                  --set agent.extraEnvs[4].name=NO_PROXY,agent.extraEnvs[4].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
+                  --set agent.extraEnvs[5].name=no_proxy,agent.extraEnvs[5].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
+                  --set clusterReceiver.extraEnvs[0].name=HTTP_PROXY,clusterReceiver.extraEnvs[0].value=http://$PROXY \
+                  --set clusterReceiver.extraEnvs[1].name=HTTPS_PROXY,clusterReceiver.extraEnvs[1].value=http://$PROXY \
+                  --set clusterReceiver.extraEnvs[2].name=http_proxy,clusterReceiver.extraEnvs[2].value=http://$PROXY \
+                  --set clusterReceiver.extraEnvs[3].name=https_proxy,clusterReceiver.extraEnvs[3].value=http://$PROXY \
+                  --set clusterReceiver.extraEnvs[4].name=NO_PROXY,clusterReceiver.extraEnvs[4].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
+                  --set clusterReceiver.extraEnvs[5].name=no_proxy,clusterReceiver.extraEnvs[5].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
+                  --set splunkObservability.realm='us1' \
+                  --set splunkObservability.logsEnabled='true' \
+                  --set splunkObservability.profilingEnabled='true' \
+                  --set image.fluentd.tag='1.3.2'
+                - |
+                  if [`kubectl get ns | grep -c prometheus-operator`==0]; then
+                    kubectl create ns prometheus-operator || true
+                    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+                    helm repo update
+                    helm upgrade -i prometheus prometheus-community/kube-prometheus-stack -n prometheus-operator --version 48.3.1
+                  fi
+                - |
+                  if [`kubectl get ns | grep -c nginx-ingress-reference`==0]; then
+                    echo "setup nginx-ingress-reference"
+                    kubectl create ns nginx-ingress-reference
+                    kubectl create secret docker-registry reference-secret --docker-server=private-registry.nginx.com --docker-username=$NGINX_LICENSE_TOKEN --docker-password=none -n nginx-ingress-reference
+                    kubectl get secret reference-secret -n nginx-ingress-reference -o yaml
+                  fi
+                  # Installing reference ingress
+                  helm repo add nginx-stable https://helm.nginx.com/stable
+                  helm repo update
+                  git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.5.0
+                  cd kubernetes-ingress/charts/nginx-ingress
+                  export intraSubnets="${pIntraSubnetIds}"
+                  export referencePortNumber="${pReferencePortNumber}"
+                  export referenceFacing="${pReferenceFacing}"
+                  export referenceAnnotation="${pReferenceAnnotation}"
+                  export EKSClusterSecurityGroup="${pEKSClusterSecurityGroup}"
+                  export ENV="${pEnvironment}"
+                  export NGINXDEBUG=true
+                  export REPLICACOUNT=1
+                  if [ $ENV = "preprod" ] || [ $ENV = "prod" ]  ; then
+                    export NGINXDEBUG=false
+                    export REPLICACOUNT=2
+                  fi
+                  envsubst < ../../../app/nginxplus/nginx-reference.yaml > ../../../app/nginxplus/nginx-reference.output.yaml
+                  cat ../../../app/nginxplus/nginx-reference.output.yaml |grep ntrip
+                  cat ../../../app/nginxplus/nginx-reference.output.yaml
+                  helm upgrade -i -n nginx-ingress-reference -f ../../../app/nginxplus/nginx-reference.output.yaml nginx-ingress-reference .      
+                - |
+                  if [`kubectl get ns | grep -c nginx-ingress-rover`==0]; then
+                    echo "setup nginx-ingress-rover"
+                    kubectl create ns nginx-ingress-rover
+                    kubectl create secret docker-registry rover-secret --docker-server=private-registry.nginx.com --docker-username=$NGINX_LICENSE_TOKEN --docker-password=none -n nginx-ingress-rover
+                  fi
+                  # Installing rover ingress
+                  export publicSubnets="${pPubSubnetIds}"
+                  export acmCertificate="${pAcmCertificate}"
+                  export EKSClusterSecurityGroup="${pEKSClusterSecurityGroup}"
+                  export RoverSecurityGroup="${pRoverSecurityGroup}"
+                  export ENV="${pEnvironment}"
+                  export NGINXDEBUG=true
+                  export REPLICACOUNT=1
+                  if [ $ENV = "preprod" ] || [ $ENV = "prod" ]  ; then
+                    export NGINXDEBUG=false
+                    export REPLICACOUNT=3
+                  fi
+                  envsubst < ../../../app/nginxplus/nginx-rover.yaml > ../../../app/nginxplus/nginx-rover.values.output.yaml
+                  cat ../../../app/nginxplus/nginx-rover.values.output.yaml
+                  helm upgrade -i -n nginx-ingress-rover -f ../../../app/nginxplus/nginx-rover.values.output.yaml nginx-ingress-rover .  
+                - |
+                  if [`kubectl get ns | grep -c nginx-ingress-noauth`==0]; then
+                    echo "setup nginx-ingress-noauth"
+                    kubectl create ns nginx-ingress-noauth
+                    kubectl create secret docker-registry noauth-secret --docker-server=private-registry.nginx.com --docker-username=$NGINX_LICENSE_TOKEN --docker-password=none -n nginx-ingress-noauth
+                  fi
+                  # Installing noauth ingress
+                  export appSubnets="${pAppSubnetIds}"
+                  export EKSClusterSecurityGroup="${pEKSClusterSecurityGroup}"
+                  export ENV="${pEnvironment}"
+                  export NGINXDEBUG=true
+                  export REPLICACOUNT=1
+                  if [ $ENV = "preprod" ] || [ $ENV = "prod" ]  ; then
+                    export NGINXDEBUG=false
+                    export REPLICACOUNT=2
+                  fi
+                  envsubst < ../../../app/nginxplus/nginx-noauth.yaml > ../../../app/nginxplus/nginx-noauth.values.output.yaml
+                  helm upgrade -i -n nginx-ingress-noauth -f ../../../app/nginxplus/nginx-noauth.values.output.yaml nginx-ingress-noauth .
+                - |
+                  if [`kubectl get ns | grep -c confluent`==1]; then
+                     echo "confluent is present, skipping"
+                  else
+                    # Installing confluent
+                    helm repo add confluentinc https://packages.confluent.io/helm
+                    helm repo update
+                    kubectl create namespace confluent || true
+                    helm upgrade -i --install confluent-operator confluentinc/confluent-for-kubernetes --namespace confluent --set licenseKey=$CONFLUENT_LICENSE
+                    # Installing kafka,zookeeper and controlcenter
+                    if [ $ENV = "dev" ] || [ $ENV = "test" ]  ; then
+                      kubectl apply -f ../../../app/confluent/kafka_7.5.1_dev.yaml -n confluent
+                    else
+                      kubectl apply -f ../../../app/confluent/kafka_7.5.1_prod.yaml -n confluent
+                    fi
+                  fi
+                - kubectl get pods --all-namespaces
+
+      TimeoutInMinutes: 30
+      VpcConfig:
+        Subnets: !Ref pSubnetIds
+        SecurityGroupIds:
+          - !Sub '{{resolve:ssm:${pProjectName}-ClusterSecurityGroup}}'
+        VpcId: !Ref pVpcId

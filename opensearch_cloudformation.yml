@@ -1,0 +1,674 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: OpenSearchDomain resource with accompanying logging groups
+
+Parameters:
+
+#Environment and Prodict Parameters
+  pEnvironment: #Overridden by Codepipeline.yml in appropriate stage parameter override section
+    Description: 'Environment for dev/test/preprod/prod.'
+    Type: String
+  pProduct: #Overridden by Codepipeline.yml in appropriate stage parameter override section
+    Type: String
+    Description: Product Name
+
+#Tagging parameters
+  pLaunchBy:
+    Type: String
+    Description: Email ID of who is launching the product
+    Default: "manohar.arranagu@verizon.com"
+  pVsadTag:
+    Type: String          #'AWS::SSM::Parameter::Value<String>'
+    Description: VZ VSAD ID
+    Default: "D4JV"
+  pVastTag:
+    Type: String                #'AWS::SSM::Parameter::Value<String>'
+    Description: VZ VAST ID
+    Default: "2492"
+  pTeamOwnerEmail:
+    Description: Team Owner Email
+    Type: String
+    Default: "pact@verizon.com"
+  pResourceCustodianTag:
+    Description: Resource Custodian
+    Type: String
+    Default: "pact@verizon.com"
+
+########################################
+###OpenSearch Configuration Parameters##
+########################################
+  pEngineVersion: #Is overidden with configuration-{Env}.json
+    Description: User defined OpenSearch Version
+    Type: String
+  pRestActionMultiAllowExplicitIndex:  #Is overidden with configuration-{Env}.json
+    Description: OpenSearchi Advanced Option
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pIndicesFielddataCacheSize: #Is overidden with configuration-{Env}.json
+    Description: Specifies whether explicit references to indices are allowed inside the body of HTTP requests.
+    Type: String
+  pIndicesQueryBoolMaxClauseCount: #Is overidden with configuration-{Env}.json
+    Description: Specifies the maximum number of clauses allowed in a Lucene boolean query. 1,024 is the default.
+    Type: String
+
+#Master and Node Configurations
+#For sizing guidelines of EBS Volumes and INstance Types see AWS Documentation
+#https://docs.aws.amazon.com/opensearch-service/latest/developerguide/sizing-domains.html
+  pDedicatedMasterEnabled: #Is overidden with configuration-{Env}.json
+    Description: Is dedicated Master is Enabled
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pDedicatedMasterCount: #Is overidden with configuration-{Env}.json
+    Description: Number of dedicated master instances
+    Type: Number
+  pDedicatedMasterType: #Is overidden with configuration-{Env}.json
+    Description: Instance type for te dedicated Master
+    Type: String
+  pNumInstances: #Recommended minimum of 2 for replication purposes. #Is overidden with configuration-{Env}.json
+    Description: Number of instances in the OpenSearch cluster
+    Type: Number
+  pInstanceType: #Is overidden with configuration-{Env}.json
+    Description: Instance type of the OpenSearch
+    Type: String
+  pEBSVolumeType:  #Is overidden with configuration-{Env}.json
+    Description: EBS type attached to Instances defined in pInstanceType
+    Type: String
+  pEBSVolumeSize: #Is overidden with configuration-{Env}.json
+    Description: Size of EBS attached to Instances defined in pEBSVolumeType
+    Type: String
+  pEBSIops: #Is overidden with configuration-{Env}.json
+    Description: The number of IOPS that the volume supports. This property applies only to the Provisioned IOPS (SSD) EBS volume type.
+    Type: Number
+
+  #OpenSearch Encryption and HTTPS Settings
+  pEncryptionAtRestEnabled: #Is overidden with configuration-{Env}.json
+    Description: Is encryption enabled at rest
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pEnforceHTTPS: #Is overidden with configuration-{Env}.json
+    Description: Is HTTPS enforced
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pKMSKeyAlias: #Is overidden with configuration-{Env}.json
+    Description: KMS key Alias to encrypts EBS volumes at rest
+    Type: String
+  pNodeToNodeEncryption:  #Is overidden with configuration-{Env}.json
+    Description: Enable node to node encryption
+    Type: String
+    AllowedValues:
+      - true
+      - false
+
+# VPC and Networking Parameters
+  pVPCId:  #Is overidden with configuration-{Env}.json
+    Description: VPC ID where the opensearch to be created
+    Type: String
+  pVPCCidrBlock1:  #Is overidden with configuration-{Env}.json
+    Type: String
+    Description: CIDR Block for VPC
+  pVPCCidrBlock2:  #Is overidden with configuration-{Env}.json
+    Type: String
+    Description: CIDR Block for VPC
+  pIntraSubnetIds:   #Is overidden with configuration-{Env}.json
+    Type: List<String>
+    Default: List of SubnetIds
+  pZoneAwarenessEnabled: #Is overidden with configuration-{Env}.json
+    Description: Enable zone awareness to have instances across the availability zones
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pNumAZs: #Is overidden with configuration-{Env}.json
+    Description: Number of availability zones
+    Type: Number
+
+###OpenSearch Logging Parameters###
+#Slow Search
+  pSlowSearchLogsEnabled: #Is overidden with configuration-{Env}.json.
+    Description: Clodwatch Logs enabled flag. Is overidden with configuration-{Env}.json
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pSlowSearchLogsRetention:  #Is overidden with configuration-{Env}.json   Security requires at least 90 days of logs.
+    Description: Number of days to retain logs. Values 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2192, 2557, 2922, 3288, and 3653.
+    Type: Number
+#Index Slow
+  pIndexSlowLogsEnabled: #Is overidden with configuration-{Env}.json
+    Description: Clodwatch Logs enabled flag. Is overidden with configuration-{Env}.json
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pIndexSlowLogsRetention:  #Is overidden with configuration-{Env}.json   Security requires at least 90 days of logs.
+    Description: Number of days to retain logs. Values 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2192, 2557, 2922, 3288, and 3653.
+    Type: Number
+#Application Errors (The Open Search Application, not the application that is feeding data)
+  pErrorLogsEnabled: #Is overidden with configuration-{Env}.json
+    Description: Clodwatch Logs enabled flag. Is overidden with configuration-{Env}.json
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pErrorLogsRetention:  #Is overidden with configuration-{Env}.json   Security requires at least 90 days of logs.
+    Description: Number of days to retain logs. Values 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2192, 2557, 2922, 3288, and 3653.
+    Type: Number
+#User activity and compliance logging
+  pAuditLogsEnabled: #Is overidden with configuration-{Env}.json
+    Description: Clodwatch Logs enabled flag. Is overidden with configuration-{Env}.json
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  pAuditLogsRetention:  #Is overidden with configuration-{Env}.json Security requires at least 90 days of logs.
+    Description: Number of days to retain logs. Values 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2192, 2557, 2922, 3288, and 3653.
+    Type: Number
+
+
+Conditions:
+  cMasterRequired: !Equals [!Ref pDedicatedMasterEnabled, "true"]
+  cEncrypted: !Equals [!Ref pEncryptionAtRestEnabled, "true"]
+  cEnforceHTTPS: !Equals [!Ref pEnforceHTTPS, "true"]
+
+
+Resources:
+  rSecurityGroup1:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security Group for the OpenSearch cluster"
+      GroupName: !Sub ${pProduct}-sg1-${AWS::Region}
+      VpcId: !Ref pVPCId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: "Allow HTTPS Outbound"
+        - IpProtocol: tcp
+          FromPort: 1024
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+          Description: "Allow HTTPS Outbound"
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 127.0.0.1/32
+          Description: Default local host all traffic
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 68.128.0.0/16
+          Description: "Allow HTTP Traffic from clients (VZ)"
+##Allow Employee VPN Traffic into Intranet Subnets##
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 63.12.0.0/14
+          Description: "Allow HTTP Traffic from VZW VPN"
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref pVPCCidrBlock1
+          Description: "Allow HTTPS Traffic from VPC P1"
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref pVPCCidrBlock2
+          Description: "Allow HTTPS Traffic from VPC P2"
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 159.67.232.0/21
+          Description: FHEBPSSLVPN
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 159.67.224.0/20
+          Description: FHEBPSSLVPN
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 204.61.76.0/22
+          Description: SACEBPVPN
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 204.61.72.0/21
+          Description: SACEBPVPN
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 204.61.64.0/21
+          Description: TPAEBPSSLVPN
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 204.61.68.0/22
+          Description: TPAEBPSSLVPN
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProduct}-os-sg-${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pVsadTag
+        - Key: pact:vast
+          Value: !Ref pVastTag
+        - Key: pact:purpose
+          Value: SG to use with OpenSearch and Dashboard
+        - Key: pact:dataclass
+          Value: private
+        - Key: pact:team-owner
+          Value: pact@verizon.com
+        - Key: pact:launched-by
+          Value: !Ref pLaunchBy
+        - Key: pact:resource-custodian
+          Value: !Ref pLaunchBy
+
+  # rOSServiceLinkedRole:
+  #   Type: 'AWS::IAM::ServiceLinkedRole'
+  #   Properties:
+  #     AWSServiceName: opensearchservice.amazonaws.com
+  #     Description: 'Role for OS to access resources in my VPC'
+  #     #CustomSuffix: 1
+
+  rKmsSecretsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Multi region key (primary) AWS Secrets Manager."
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: !Sub cmk-secretsmanager-os-${AWS::Region}
+        Statement:
+        - Sid: Enable IAM User Permissions
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: "*"
+        - Sid: Allow access through AWS Secrets Manager for all principals in the account (east-1)
+            that are authorized to use AWS Secrets Manager
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - kms:Encrypt
+          - kms:Decrypt
+          - kms:ReEncrypt*
+          - kms:CreateGrant
+          - kms:DescribeKey
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref AWS::AccountId
+              kms:ViaService: !Sub secretsmanager.${AWS::Region}.amazonaws.com
+        - Sid: Allow access through AWS Secrets Manager for all principals in the account
+            that are authorized to use AWS Secrets Manager
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: kms:GenerateDataKey*
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:CallerAccount: !Ref AWS::AccountId
+            StringLike:
+              kms:ViaService: secretsmanager.*.amazonaws.com
+        - Sid: Allow direct access to key metadata to the account
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action:
+          - kms:Describe*
+          - kms:Get*
+          - kms:List*
+          - kms:RevokeGrant
+          Resource: "*"
+        - Sid: Allow service (non-human) role(s) grant operations on CMK
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/CodePipeline-Action
+          Action:
+          - kms:CreateGrant
+          - kms:ListGrants
+          - kms:RetireGrant
+          - kms:RevokeGrant
+          Resource: '*'
+          Condition:
+            Bool:
+              kms:GrantIsForAWSResource: !!bool 'true'
+            StringEquals:
+              aws:PrincipalAccount: !Ref AWS::AccountId
+
+#This is a Secret resource with a randomly generated password in its SecretString JSON.
+  rOpenSearchMasterPassword:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: !Sub OSMasterPassword-${AWS::Region}
+      Description: "This secret has a dynamically generated secret password for the OpenSearch Master User."
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "os-master-admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 17
+        ExcludeCharacters: '"@/\'
+      KmsKeyId: !Ref rKmsSecretsKey
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProduct}-master-secret--${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pVsadTag
+        - Key: pact:vast-id
+          Value: !Ref pVastTag
+        - Key: pact:purpose
+          Value: Secret for
+        - Key: pact:launched-by
+          Value: !Ref pLaunchBy
+        - Key: pact:resource-custodian
+          Value: !Ref pResourceCustodianTag
+        - Key: pact:team-owner
+          Value: !Ref pTeamOwnerEmail
+
+
+  rOpenSearchDomain:
+    Type: AWS::OpenSearchService::Domain
+    DependsOn:
+    #- rOSServiceLinkedRole
+    - rAddAuditResourcePolicy
+    - rAddErrorResourcePolicy
+    - rAddIndexSlowResourcePolicy
+    - rAddSlowSearchResourcePolicy
+    Properties:
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: !Ref pRestActionMultiAllowExplicitIndex
+        indices.fielddata.cache.size: !Ref pIndicesFielddataCacheSize
+        indices.query.bool.max_clause_count: !Ref pIndicesQueryBoolMaxClauseCount
+        #override_main_response_version: true
+      AdvancedSecurityOptions:
+        Enabled: true
+        InternalUserDatabaseEnabled: true
+        MasterUserOptions:
+          #MasterUserARN: !Ref pMasterUserARN
+          MasterUserName: !Join ['', ['{{resolve:secretsmanager:', !Ref rOpenSearchMasterPassword, ':SecretString:username}}' ]]
+          MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref rOpenSearchMasterPassword, ':SecretString:password}}' ]]
+      ClusterConfig:
+        DedicatedMasterCount: !If [cMasterRequired, !Ref pDedicatedMasterCount, !Ref "AWS::NoValue"]
+        DedicatedMasterEnabled: !If [cMasterRequired, !Ref pDedicatedMasterEnabled, !Ref "AWS::NoValue"]
+        DedicatedMasterType: !If [cMasterRequired, !Ref pDedicatedMasterType, !Ref "AWS::NoValue"]
+        InstanceCount: !Ref pNumInstances
+        InstanceType: !Ref pInstanceType
+        ZoneAwarenessEnabled: !Ref pZoneAwarenessEnabled
+        ZoneAwarenessConfig:
+          AvailabilityZoneCount: !Ref pNumAZs
+      DomainName: !Sub ${pProduct}
+      DomainEndpointOptions:
+        Fn::If:
+          - cEnforceHTTPS
+          - EnforceHTTPS: true
+            TLSSecurityPolicy: 'Policy-Min-TLS-1-0-2019-07'
+          - !Ref "AWS::NoValue"
+      EBSOptions:
+        EBSEnabled: true
+        Iops: !Ref pEBSIops
+        VolumeSize: !Ref pEBSVolumeSize
+        VolumeType: !Ref pEBSVolumeType
+      EncryptionAtRestOptions:
+        Fn::If:
+          - cEncrypted
+          - Enabled: !Ref pEncryptionAtRestEnabled
+            #KmsKeyId: !Ref pKMSKeyId
+            KmsKeyId: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/${pKMSKeyAlias}
+          - !Ref "AWS::NoValue"
+      EngineVersion: !Ref pEngineVersion
+      LogPublishingOptions:
+        SEARCH_SLOW_LOGS:
+          CloudWatchLogsLogGroupArn: !GetAtt rSlowSearchLogGroup.Arn
+          Enabled: !Ref pSlowSearchLogsEnabled
+        INDEX_SLOW_LOGS:
+          CloudWatchLogsLogGroupArn: !GetAtt rIndexSlowLogGroup.Arn
+          Enabled: !Ref pIndexSlowLogsEnabled
+        ES_APPLICATION_LOGS:
+          CloudWatchLogsLogGroupArn: !GetAtt rErrorLogGroup.Arn
+          Enabled: !Ref pErrorLogsEnabled
+        AUDIT_LOGS:
+          CloudWatchLogsLogGroupArn: !GetAtt rAuditLogGroup.Arn
+          Enabled: !Ref pAuditLogsEnabled
+      NodeToNodeEncryptionOptions:
+        Enabled: !Ref pNodeToNodeEncryption
+      VPCOptions:
+        SecurityGroupIds:
+          - !Ref rSecurityGroup1
+        SubnetIds: !Ref pIntraSubnetIds
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProduct}-oscluster-${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pVsadTag
+        - Key: pact:vast-id
+          Value: !Ref pVastTag
+        - Key: pact:purpose
+          Value: WAF for FM application
+        - Key: pact:launched-by
+          Value: !Ref pLaunchBy
+        - Key: pact:resource-custodian
+          Value: !Ref pResourceCustodianTag
+        - Key: pact:team-owner
+          Value: !Ref pTeamOwnerEmail
+
+  rSlowSearchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/OpenSearchService/domains/${pProduct}/${AWS::Region}/slowsearch-logs
+      RetentionInDays: !Ref pSlowSearchLogsRetention
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProduct}-slowsearchloggroup-${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pVsadTag
+        - Key: pact:vast-id
+          Value: !Ref pVastTag
+        - Key: pact:purpose
+          Value: WAF for FM application
+        - Key: pact:launched-by
+          Value: !Ref pLaunchBy
+        - Key: pact:resource-custodian
+          Value: !Ref pResourceCustodianTag
+        - Key: pact:team-owner
+          Value: !Ref pTeamOwnerEmail
+
+  rIndexSlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/OpenSearchService/domains/${pProduct}/${AWS::Region}/indexslow-logs
+      RetentionInDays: !Ref pIndexSlowLogsRetention
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProduct}-indexslowloggroup-${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pVsadTag
+        - Key: pact:vast-id
+          Value: !Ref pVastTag
+        - Key: pact:purpose
+          Value: WAF for FM application
+        - Key: pact:launched-by
+          Value: !Ref pLaunchBy
+        - Key: pact:resource-custodian
+          Value: !Ref pResourceCustodianTag
+        - Key: pact:team-owner
+          Value: !Ref pTeamOwnerEmail
+
+  rErrorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/OpenSearchService/domains/${pProduct}/${AWS::Region}/error-logs
+      RetentionInDays: !Ref pErrorLogsRetention
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProduct}-apperrorgroup-${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pVsadTag
+        - Key: pact:vast-id
+          Value: !Ref pVastTag
+        - Key: pact:purpose
+          Value: WAF for FM application
+        - Key: pact:launched-by
+          Value: !Ref pLaunchBy
+        - Key: pact:resource-custodian
+          Value: !Ref pResourceCustodianTag
+        - Key: pact:team-owner
+          Value: !Ref pTeamOwnerEmail
+
+  rAuditLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/OpenSearchService/domains/${pProduct}/${AWS::Region}/audit-logs
+      RetentionInDays: !Ref pAuditLogsRetention
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProduct}-auditloggroup-${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pVsadTag
+        - Key: pact:vast-id
+          Value: !Ref pVastTag
+        - Key: pact:purpose
+          Value: WAF for FM application
+        - Key: pact:launched-by
+          Value: !Ref pLaunchBy
+        - Key: pact:resource-custodian
+          Value: !Ref pResourceCustodianTag
+        - Key: pact:team-owner
+          Value: !Ref pTeamOwnerEmail
+
+  rAddAuditResourcePolicy:
+    Type: Custom::AddResourcePolicy
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt rPolicyPutLambda.Arn
+      CloudWatchLogsLogGroupArn: !GetAtt rAuditLogGroup.Arn
+      PolicyName: !Sub audit-put-policy-${AWS::Region}
+
+  rAddErrorResourcePolicy:
+    Type: Custom::AddResourcePolicy
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt rPolicyPutLambda.Arn
+      CloudWatchLogsLogGroupArn: !GetAtt rErrorLogGroup.Arn
+      PolicyName: !Sub errorlog-put-policy-${AWS::Region}
+
+  rAddIndexSlowResourcePolicy:
+    Type: Custom::AddResourcePolicy
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt rPolicyPutLambda.Arn
+      CloudWatchLogsLogGroupArn: !GetAtt rIndexSlowLogGroup.Arn
+      PolicyName: !Sub indexslow-put-policy-${AWS::Region}
+
+  rAddSlowSearchResourcePolicy:
+    Type: Custom::AddResourcePolicy
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt rPolicyPutLambda.Arn
+      CloudWatchLogsLogGroupArn: !GetAtt rSlowSearchLogGroup.Arn
+      PolicyName: !Sub slowsearch-put-policy-${AWS::Region}
+
+  rLambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub ${pProduct}-lambda-role-${AWS::Region}
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+  rLambdaRolePolicies:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub ${pProduct}-lambda-policy-${AWS::Region}
+      Roles:
+        - Ref: "rLambdaExecutionRole"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          - logs:PutResourcePolicy
+          - logs:DeleteResourcePolicy
+          Resource:
+          - "*"
+### Provide create Log stream and update the Log events access to opensearch service on the Log groups rAuditLogGroup, rErrorLogGroup, rIndexSlowLogGroup and rSlowSearchLogGroup
+  rPolicyPutLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Handler: "index.handler"
+      Role:
+        Fn::GetAtt:
+          - "rLambdaExecutionRole"
+          - "Arn"
+      Code:
+        ZipFile: |
+          import json
+          import cfnresponse
+          import boto3
+          from botocore.exceptions import ClientError
+
+          client = boto3.client("logs")
+
+          def PutPolicy(arn,policyname):
+            response = client.put_resource_policy(
+              policyName=policyname,
+              policyDocument="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"opensearchservice.amazonaws.com\"},\"Action\":[\"logs:CreateLogStream\",\"logs:PutLogEvents\"],\"Resource\":\""+ arn + "\"}]}",
+            )
+            return
+
+          def DeletePolicy(policyname):
+            response = client.delete_resource_policy(
+              policyName=policyname
+            )
+            return
+
+          def handler(event, context):
+
+            CloudWatchLogsLogGroupArn = event['ResourceProperties']['CloudWatchLogsLogGroupArn']
+            PolicyName = event['ResourceProperties']['PolicyName']
+            responseData = {}
+            try:
+              if event['RequestType'] == "Delete":
+                DeletePolicy(PolicyName)
+              if event['RequestType'] == "Create":
+                PutPolicy(CloudWatchLogsLogGroupArn,PolicyName)
+              responseData['Data'] = "SUCCESS"
+              status=cfnresponse.SUCCESS
+            except ClientError as e:
+              responseData['Data'] = "FAILED"
+              status=cfnresponse.FAILED
+              print("Unexpected error: %s" % e)
+            cfnresponse.send(event, context, status, responseData, "CustomResourcePhysicalID")
+      Runtime: "python3.9"

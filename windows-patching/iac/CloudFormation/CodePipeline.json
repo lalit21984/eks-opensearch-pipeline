@@ -1,0 +1,80 @@
+[
+    {
+        "ParameterKey": "pCodePipelineActionRole",
+        "ParameterValue": "/pipelinefactory/codepipeline/iam/action",
+        "ResolvedValue": "CodePipeline-Action"
+    },
+    {
+        "ParameterKey": "pSharedDeplAccountNumber",
+        "ParameterValue": "/accounts/SharedServices/Depl/id",
+        "ResolvedValue": "831627161242"
+    },
+    {
+        "ParameterKey": "pDevAccountNumber",
+        "ParameterValue": "/accounts/dev/id",
+        "ResolvedValue": "773785788626"
+    },
+    {
+        "ParameterKey": "pMasterAccountNumber",
+        "ParameterValue": "/accounts/Master/id",
+        "ResolvedValue": "286753932272"
+    },
+    {
+        "ParameterKey": "pRegion1CodePipelineKmsKey",
+        "ParameterValue": "/pipelinefactory/codepipeline/region1/kmskeyarn",
+        "ResolvedValue": "arn:aws:kms:us-east-1:735649920229:key/4ec5c655-6ca6-4fbb-a456-cecd1a6f9493"
+    },
+    {
+        "ParameterKey": "pDeplAccountNumber",
+        "ParameterValue": "/accounts/depl/id",
+        "ResolvedValue": "735649920229"
+    },
+    {
+        "ParameterKey": "pRegion1Name",
+        "ParameterValue": "/pipelinefactory/codepipeline/region1/name",
+        "ResolvedValue": "us-east-1"
+    },
+    {
+        "ParameterKey": "pSharedProdAccountNumber",
+        "ParameterValue": "/accounts/SharedServices/Prod/id",
+        "ResolvedValue": "706695405409"
+    },
+    {
+        "ParameterKey": "pTestAccountNumber",
+        "ParameterValue": "/accounts/test/id",
+        "ResolvedValue": "120885424557"
+    },
+    {
+        "ParameterKey": "pProdAccountNumber",
+        "ParameterValue": "/accounts/prod/id",
+        "ResolvedValue": "034543456060"
+    },
+    {
+        "ParameterKey": "pProduct",
+        "ParameterValue": "pm-hpl-windows-patching"
+    },
+    {
+        "ParameterKey": "pRegion1CodePipelineArtifactBucket",
+        "ParameterValue": "/pipelinefactory/codepipeline/region1/s3bucket",
+        "ResolvedValue": "pact-pdi-hpl-codepipeline-735649920229-us-east-1"
+    },
+    {
+        "ParameterKey": "pCodePipelineServiceRole",
+        "ParameterValue": "/pipelinefactory/codepipeline/iam/service",
+        "ResolvedValue": "CodePipeline-Service"
+    },
+    {
+        "ParameterKey": "pPreProdAccountNumber",
+        "ParameterValue": "/accounts/preprod/id",
+        "ResolvedValue": "226939427377"
+    },
+    {
+        "ParameterKey": "pTeam",
+        "ParameterValue": "pact-pdi-hpl"
+    },
+    {
+        "ParameterKey": "pCodeBuildRole",
+        "ParameterValue": "/pipelinefactory/codebuild/iam",
+        "ResolvedValue": "CodeBuild-Action"
+    }
+]

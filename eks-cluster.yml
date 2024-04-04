@@ -1,0 +1,2333 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: EKS Pattern - with Managed Node Group Test
+
+Parameters:
+  pProjectName:
+    Type: String
+  pEKSPodSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: List<AWS::EC2::Subnet::Id>
+  pAppSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: List<AWS::EC2::Subnet::Id>
+  pSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: List<AWS::EC2::Subnet::Id>  
+  pPubSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: List<AWS::EC2::Subnet::Id>   
+  pIntraSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: List<AWS::EC2::Subnet::Id>
+  pDeplAccountNumber:
+    Description: Deployment account number
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/sharedservices/global/accounts/shared-services-depl-id'
+  
+  pK8sVersion: 
+    Description: Kubernetes Version to deploy
+    Type: String
+    Default: '1.23'
+  pNodeInstanceType:
+    Description: Provide an EC2 Instance type for managed nodes to use
+    Type: String
+    Default: m5.large
+  pVpcId:
+    Type: String
+  pBastionHostAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: Bastion Host AMI ID (eg /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2)
+    Default: /sharedservices/us-east-1/pact-amazon-linux-2/ami-id 
+  rBastionHostInstanceType:
+    Type: String
+    Default: t3.medium
+  pAppSubnetCIDR:
+    Type: String
+  pEKSPodSubnetCIDR:
+    Type: String
+  pIntraSubnetCIDR:
+    Type: String
+  pReferencePortNumber:
+    Type: String
+  pReferenceAnnotation:
+    Type: String
+  pReferenceFacing:
+    Type: String
+    Default: "internal"
+  pHostedZoneId:
+    Type: String
+  pAcmCertificate:
+    Type: String         
+  pEKSPodSubnetCIDR1:
+    Type: String
+  pAppSubnetCIDR1:
+    Type: String
+  pEKSPodSubnetCIDR2:
+    Type: String
+  pAppSubnetCIDR2:
+    Type: String
+  pEKSPodSubnetCIDR3:
+    Type: String
+  pAppSubnetCIDR3:
+    Type: String
+  pClusterIngress1:
+    Type: String
+    Default: 108.1.26.128/27
+  pClusterIngress2:
+    Type: String
+    Default:  108.1.26.160/27
+  pClusterIngress3:
+    Type: String
+    Default: 108.1.26.192/27
+    Description: cluster ingress cidr from public
+  pDesiredSize:
+    Type: Number
+    Default: 2
+  pMaxSize:
+    Type: Number
+    Default: 6
+  pMinSize:
+    Type: Number
+    Default: 2
+  ## Spot Ocean Parameters
+  pOceanminVcpu:
+    Type: String
+    Description: spot ocean minvcpu
+    Default: none
+  pminInstanceCount:
+    Type: String
+    Description: spotocean minvcpu
+    Default: none
+
+  pSplunkAccessToken:
+    Type: String
+    Description: Kubernetes Version to deploy
+    Default: none
+  pSpotContrlToken:
+    Type: String
+    Description: Spot Instance Controller Token
+    Default: none
+  pSpotInstToken:
+    Description: The API Token for Spot.io
+    NoEcho: 'true'
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/sharedservices/us-east-1/spotinst/token'
+  pSpotInstAccountId:
+    Description: Spot Account ID
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/sharedservices/us-east-1/spotinst/account-id'
+  pSpotInstShouldRoll:
+    Description: Should roll when updating
+    Type: String
+    Default: 'true'
+  pDefaultAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: '/sharedservices/us-east-1/pact-amazon-linux-2-eks-1-25/ami-id'
+  pEKSClusterSecurityGroup:
+    #Type: AWS::SSM::Parameter::Value<String>
+    Type: String
+    Default: 'pm-hpl-cluster-ClusterSecurityGroup'
+  # Spot Ocean Enable
+  pUseSpotOcean:
+    Description: Use Spot ocean for EKS Cluster Autoscaling
+    Type: String
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+      - ''
+    Default: 'Yes'
+  # EKS Managed Node Group Enable
+  pUseManagedNodeGroup:
+    Description: Use Managed NodeGroup for EKS
+    Type: String
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+      - ''
+    Default: ''
+
+### Tag Parameters
+  pTagPactCustomerData:
+    Type: String
+  pTagPactDataclass:
+    Type: String
+  pTagPactLaunchedBy:
+    Type: String
+  pTagPactLifecycle:
+    Type: String
+  pTagPactPurpose:
+    Type: String
+  pTagPactResourceCustodian:
+    Type: String
+  pTagPactTeamOwner:
+    Type: String
+  pTagPactVastId:
+    Type: String
+  pTagPactVsad:
+    Type: String
+  pTagPactRole:
+    Type: String
+  pElbArn:
+    Type: String
+    Default: "0"
+  pElbGax:
+    Type: String
+    Default: "0"
+### Unused Parameters
+  pEnvironment:
+    Type: String
+  pLbSubnetIds:
+    Description: An array of subnet IDs, such as subnet-123a351e, subnet-456b351e.
+    Type: String
+    Default: sub-0
+
+Conditions:
+  cLbSubnetIds: !Not 
+    - !Equals 
+      - !Ref pLbSubnetIds
+      - 'sub-0'
+  # cLbSubnetIds:
+  #   !Not [!Equals [ !Ref pLbSubnetIds, sub-0 ] ]
+  cIsUsEast1: !Equals [ !Ref "AWS::Region", us-east-1 ]
+  cUseSpotOcean: !Equals [ !Ref pUseSpotOcean, 'Yes' ]
+  cUseManagedNodeGroup: !Equals [!Ref pUseManagedNodeGroup, 'Yes']
+  cIsNotDev: !Not [!Equals [!Ref pEnvironment, 'dev']]
+  cIsDevOrTest: !Or [!Equals [!Ref pEnvironment, 'dev'], !Equals [!Ref pEnvironment, 'test']]
+  cIsControlCenterVNG: !And [!Condition cUseSpotOcean, !Condition cIsDevOrTest]
+
+Mappings:
+  mServicePrincipalPartitionMap:
+    aws:
+      EC2: ec2.amazonaws.com
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+    aws-cn:
+      EC2: ec2.amazonaws.com.cn
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+    aws-us-gov:
+      EC2: ec2.amazonaws.com
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+
+Resources:
+  ## EKS Cluster Resources  
+  rCluster: # EKS Cluster
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub ${pProjectName}-${AWS::Region}
+      ResourcesVpcConfig:
+        SubnetIds: !Ref pAppSubnetIds
+      EncryptionConfig:
+        - Provider:
+            KeyArn:
+              Fn::GetAtt:
+                - rKey6AB29FA6
+                - Arn
+          Resources:
+            - secrets      
+      Version: !Ref pK8sVersion
+      RoleArn: !GetAtt rServiceRole.Arn
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+            - Type: api
+            - Type: audit
+            - Type: authenticator
+            - Type: controllerManager
+            - Type: scheduler
+  ## Spot Ocean Resource
+  SpotOcean:
+    Condition: cUseSpotOcean
+    Type: Custom::ocean
+    Properties:
+      ServiceToken: !Sub 'arn:aws:lambda:${AWS::Region}:178579023202:function:spotinst-cloudformation'
+      accessToken: !Ref 'pSpotInstToken'
+      accountId: !Ref 'pSpotInstAccountId'
+      autoTag: true
+      updatePolicy:
+        shouldRoll: !Ref 'pSpotInstShouldRoll'
+        shouldUpdateTargetCapacity:
+          shouldUpdateTargetCapacity: false
+      ocean:
+        name: !Sub ${pProjectName}-${AWS::Region}
+        controllerClusterId: !Sub ${pProjectName}-${AWS::Region}
+        region: !Sub '${AWS::Region}'
+        autoScaler:
+          isEnabled: true
+          down:
+            maxScaleDownPercentage: 50
+          autoHeadroomPercentage: 5
+          isAutoConfig: true
+          resourceLimits:
+            maxMemoryGib: 100000
+            maxVCpu: 20000
+        capacity:
+          target: 1
+          minimum: 0
+          maximum: 1000
+        strategy:
+          gracePeriod: 300
+        compute:
+          subnetIds: !Ref pAppSubnetIds
+          launchSpecification:
+            imageId: !Ref 'pDefaultAMI'
+            useAsTemplateOnly: true
+            userData: #spot instance
+              Fn::Base64:
+                !Sub |
+                  Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+                  MIME-Version:  1.0
+                  # comment for AMI-Refresh
+                  
+                  --==BOUNDARY==
+                  Content-Type: text/cloud-boothook; charset="us-ascii"
+                    
+                  #Set the proxy hostname and port
+                  PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
+                  PACT_PROXY_PROD=proxy.pact.verizon.com
+                  PACT_PROXY_PORT=8080
+
+                  # First, generate a token using the following command.
+                  TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
+
+                  # Use the token to call the metadata service
+                  REGION=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region`
+                  echo REGION: $REGION
+
+                  INSTANCE_ID=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document/ | jq -r .instanceId`
+                  echo INSTANCE_ID: $INSTANCE_ID
+
+                  LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='pact:lifecycle'].Value"  --output text`
+                  echo LIFE_CYCLE_ENV_TYPE: $LIFE_CYCLE_ENV_TYPE
+
+                  # Check which proxy endpoint to use
+                  echo "Checking which proxy host to use..."
+                  if [ $LIFE_CYCLE_ENV_TYPE = "prod" ] || [ $LIFE_CYCLE_ENV_TYPE = "depl" ]  ; then
+                      PACT_PROXY_HOST=$PACT_PROXY_PROD     
+                  else
+                      PACT_PROXY_HOST=$PACT_PROXY_NONPROD 
+                  fi
+                  
+                  PROXY="$PACT_PROXY_HOST:$PACT_PROXY_PORT"
+
+                  MAC=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/mac/)
+                  VPC_CIDR=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-ipv4-cidr-blocks | xargs | tr ' ' ',')
+                    
+                  Create the containerd systemd directory
+                  mkdir -p /etc/systemd/system/containerd.service.d
+                    
+                  #Configure yum to use the proxy
+                  cloud-init-per instance yum_proxy_config cat << EOF >> /etc/yum.conf
+                  proxy=http://$PROXY
+                  EOF
+                    
+                  #Set the proxy for future processes, and use as an include file
+                  cloud-init-per instance proxy_config cat << EOF >> /etc/environment
+                  http_proxy=http://$PROXY
+                  https_proxy=http://$PROXY
+                  HTTP_PROXY=http://$PROXY
+                  HTTPS_PROXY=http://$PROXY
+                  no_proxy=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
+                  NO_PROXY=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
+                  EOF
+                    
+                  #Configure containerd with the proxy
+                  cloud-init-per instance containerd_proxy_config tee <<EOF /etc/systemd/system/containerd.service.d/http-proxy.conf >/dev/null
+                  [Service]
+                  EnvironmentFile=/etc/environment
+                  EOF
+                   
+                  #Configure the kubelet with the proxy
+                  cloud-init-per instance kubelet_proxy_config tee <<EOF /etc/systemd/system/kubelet.service.d/proxy.conf >/dev/null
+                  [Service]
+                  EnvironmentFile=/etc/environment
+                  EOF
+                    
+                  #Reload the daemon and restart docker to reflect proxy configuration at launch of instance
+                  cloud-init-per instance reload_daemon systemctl daemon-reload 
+                  
+                  echo 'search bullseye.com' | sudo tee -a /etc/resolv.conf
+                  
+                  --==BOUNDARY==
+                  Content-Type:text/x-shellscript; charset="us-ascii"
+                
+                  #!/bin/bash
+                  set -o xtrace
+                  
+                  #Set the proxy variables before running the bootstrap.sh script
+                  set -a
+                  source /etc/environment
+                  
+                  # Calculate and Set MAX_PODS
+                  yum -y install bc
+                  yum -y install jq
+                  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+                  INST_TYPE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/instance-type)
+                  AWS_DEFAULT_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+                  ENI_INFO=$(aws ec2 describe-instance-types --filters Name=instance-type,Values=$INST_TYPE --query "InstanceTypes[].[InstanceType, NetworkInfo.MaximumNetworkInterfaces, NetworkInfo.Ipv4AddressesPerInterface]" --output text)
+                  MAX_ENI=$(echo $ENI_INFO | awk '{print $2}')
+                  MAX_IP=$(echo $ENI_INFO | awk '{print $3}')
+                  MAX_PODS=$(echo "($MAX_ENI-1)*($MAX_IP-1)*16+2" | bc)
+                  echo "Setting MAX_PODS to $MAX_PODS"
+
+                  /etc/eks/bootstrap.sh ${rCluster} --b64-cluster-ca ${rCluster.CertificateAuthorityData} --apiserver-endpoint ${rCluster.Endpoint} --use-max-pods false --kubelet-extra-args "--max-pods=$MAX_PODS"
+                  # commentsvg
+                  
+                  --==BOUNDARY==--
+            securityGroupIds: 
+              - !GetAtt rCluster.ClusterSecurityGroupId
+            iamInstanceProfile:
+              arn: !GetAtt rEksInstanceProfile.Arn
+            tags:
+              - tagKey: !Sub kubernetes.io/cluster/${pProjectName}-${AWS::Region}
+                tagValue: owned
+              - tagKey: Name
+                tagValue: !Sub ${pProjectName}-Node
+              - tagKey: Application
+                tagValue: !Ref 'AWS::StackId'
+              - tagKey: "pact:launched-by"
+                tagValue: !Ref pTagPactLaunchedBy
+              - tagKey: "pact:resource-custodian"
+                tagValue: !Ref pTagPactResourceCustodian
+              - tagKey: "pact:team-owner"
+                tagValue: !Ref pTagPactTeamOwner
+              - tagKey: "pact:customer-data"
+                tagValue: !Ref pTagPactCustomerData
+              - tagKey: "pact:dataclass"
+                tagValue: !Ref pTagPactDataclass
+              - tagKey: "pact:ec2:os"
+                tagValue: amazon.linux.2
+              - tagKey: "pact:vast-id"
+                tagValue: !Ref pTagPactVastId
+              - tagKey: "pact:vsad"
+                tagValue: !Ref pTagPactVsad
+              - tagKey: "pact:purpose"
+                tagValue: !Ref pTagPactPurpose
+              - tagKey: "pact:lifecycle"
+                tagValue: !Ref pTagPactLifecycle
+              - tagKey: "pact:role"
+                tagValue: app
+              - tagKey: "pact:resourcetype"
+                tagValue: EC2
+
+  OceanVNG:
+    Condition: cUseSpotOcean
+    Type: Custom::oceanLaunchSpec
+    Properties:
+      ServiceToken: !Sub 'arn:aws:lambda:${AWS::Region}:178579023202:function:spotinst-cloudformation'
+      accessToken: !Ref 'pSpotInstToken'
+      accountId: !Ref 'pSpotInstAccountId'
+      oceanLaunchSpec:
+        name: default-vng
+        labels:
+          - key: app
+            value: misc
+        oceanId: !Ref 'SpotOcean'
+        instanceMetadataOptions:
+          httpTokens: required
+          httpPutResponseHopLimit: 2
+        blockDeviceMappings:
+          - deviceName: /dev/xvda
+            ebs:
+              deleteOnTermination: true
+              encrypted: true
+              kmsKeyId: 
+                !If [cIsUsEast1, arn:aws:kms:us-east-1:706695405409:key/49e55934-0ce0-413f-b408-cd9a3449e6bf, arn:aws:kms:us-west-2:706695405409:key/a68ded95-0e8d-4213-88a0-bcbf86baa90a]
+              volumeType: gp3
+              volumeSize: 80
+        # strategy:  
+        #   spotPercentage: 100
+        instanceTypesFilters:
+          minVcpu: !Ref pOceanminVcpu
+          maxVcpu: 16
+          excludeFamilies:
+            - c1
+            - c3
+            - c4
+            - d2
+            - d3
+            - f1
+            - g2
+            - g3
+            - g3s
+            - h1
+            - hi1
+            - i2
+            - i3
+            - m1
+            - m2
+            - m3 
+            - m4
+            - p2
+            - p3
+            - r3
+            - r4
+            - t1
+            - t2
+            - vt1
+            - x1
+            - x1e
+            - x2gd
+        
+        resourceLimits:
+          minInstanceCount: !Ref pminInstanceCount
+      parameters:
+        create:
+          initialNodes: 4
+        delete:
+          forceDelete: true
+  OceanKafkaVNG:
+    Condition: cUseSpotOcean
+    Type: Custom::oceanLaunchSpec
+    Properties:
+      ServiceToken: !Sub 'arn:aws:lambda:${AWS::Region}:178579023202:function:spotinst-cloudformation'
+      accessToken: !Ref 'pSpotInstToken'
+      accountId: !Ref 'pSpotInstAccountId'
+      oceanLaunchSpec:
+        instanceTypes:
+          - r5.xlarge
+        name: hpl-kafka-vng
+        labels:
+          - key: app
+            value: kafka-broker
+        oceanId: !Ref 'SpotOcean'
+        instanceMetadataOptions:
+          httpTokens: required
+          httpPutResponseHopLimit: 2
+        blockDeviceMappings:
+          - deviceName: /dev/xvda
+            ebs:
+              deleteOnTermination: true
+              encrypted: true
+              kmsKeyId: 
+                !If [cIsUsEast1, arn:aws:kms:us-east-1:706695405409:key/49e55934-0ce0-413f-b408-cd9a3449e6bf, arn:aws:kms:us-west-2:706695405409:key/a68ded95-0e8d-4213-88a0-bcbf86baa90a]
+              volumeType: gp3
+              volumeSize: 80
+        strategy:  
+          spotPercentage: 0
+        resourceLimits:
+          maxInstanceCount: 4
+          minInstanceCount: 3
+      parameters:
+        create:
+          initialNodes: 3
+        delete:
+          forceDelete: true
+  OceanZookeeperVNG:
+    Condition: cUseSpotOcean
+    Type: Custom::oceanLaunchSpec
+    Properties:
+      ServiceToken: !Sub 'arn:aws:lambda:${AWS::Region}:178579023202:function:spotinst-cloudformation'
+      accessToken: !Ref 'pSpotInstToken'
+      accountId: !Ref 'pSpotInstAccountId'
+      oceanLaunchSpec:
+        name: hpl-zookeeper-vng
+        instanceTypes:
+          - m5.xlarge
+        labels:
+          - key: app
+            value: zookeeper-broker       
+        oceanId: !Ref 'SpotOcean'
+        instanceMetadataOptions:
+          httpTokens: required
+          httpPutResponseHopLimit: 2
+        blockDeviceMappings:
+          - deviceName: /dev/xvda
+            ebs:
+              deleteOnTermination: true
+              encrypted: true
+              kmsKeyId: 
+                !If [cIsUsEast1, arn:aws:kms:us-east-1:706695405409:key/49e55934-0ce0-413f-b408-cd9a3449e6bf, arn:aws:kms:us-west-2:706695405409:key/a68ded95-0e8d-4213-88a0-bcbf86baa90a]
+              volumeType: gp3
+              volumeSize: 80
+        strategy:  
+          spotPercentage: 0
+        resourceLimits:
+          maxInstanceCount: 4
+          minInstanceCount: 3             
+      parameters:
+        create:
+          initialNodes: 3
+        delete:
+          forceDelete: true     
+
+  # OceanControlCenterVNG:
+  #   Condition: cIsControlCenterVNG
+  #   Type: Custom::oceanLaunchSpec
+  #   Properties:
+  #     ServiceToken: !Sub 'arn:aws:lambda:${AWS::Region}:178579023202:function:spotinst-cloudformation'
+  #     accessToken: !Ref 'pSpotInstToken'
+  #     accountId: !Ref 'pSpotInstAccountId'
+  #     oceanLaunchSpec:
+  #       name: hpl-controlcenter-vng
+  #       instanceTypes:
+  #         - m5.xlarge
+  #       labels:
+  #         - key: app
+  #           value: controlcenter       
+  #       oceanId: !Ref 'SpotOcean'
+  #       instanceMetadataOptions:
+  #         httpTokens: required
+  #         httpPutResponseHopLimit: 2
+  #       blockDeviceMappings:
+  #         - deviceName: /dev/xvda
+  #           ebs:
+  #             deleteOnTermination: true
+  #             encrypted: true
+  #             kmsKeyId: 
+  #               !If [cIsUsEast1, arn:aws:kms:us-east-1:706695405409:key/49e55934-0ce0-413f-b408-cd9a3449e6bf, arn:aws:kms:us-west-2:706695405409:key/a68ded95-0e8d-4213-88a0-bcbf86baa90a]
+  #             volumeType: gp3
+  #             volumeSize: 80
+  #       strategy:  
+  #         spotPercentage: 0
+  #       resourceLimits:
+  #         maxInstanceCount: 4
+  #         minInstanceCount: 3             
+  #     parameters:
+  #       create:
+  #         initialNodes: 3
+  #       delete:
+  #         forceDelete: true     
+  
+  rRoverSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for Rover NLB Facing Internet
+      VpcId: !Ref pVpcId
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow Rover internet traffic on 2100
+          FromPort: 2100
+          ToPort: 2100
+          IpProtocol: tcp
+        - CidrIp: 0.0.0.0/0
+          Description: Allow Rover internet traffic on 2110
+          FromPort: 2110
+          ToPort: 2110
+          IpProtocol: tcp
+      Tags:
+        - Key: c7n_fed-sec-sg-restrict-globally-open-ingress
+          Value: exempt
+  
+  rLbSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EKS Pattern LB SG
+      VpcId: !Ref pVpcId
+      SecurityGroupEgress:
+        - DestinationSecurityGroupId: !GetAtt rCluster.ClusterSecurityGroupId
+          Description: Allow EKS Port
+          FromPort: 0
+          ToPort: 65535
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - !If
+            - cLbSubnetIds
+            - CidrIp: 0.0.0.0/0
+              Description: from Internet https
+              FromPort: 443
+              IpProtocol: tcp
+              ToPort: 443
+            - !Ref AWS::NoValue
+        - !If
+            - cLbSubnetIds
+            - CidrIp: 0.0.0.0/0
+              Description: from Internet http
+              FromPort: 80
+              IpProtocol: tcp
+              ToPort: 80
+            - !Ref AWS::NoValue
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProjectName}-lb-sg
+        - !If
+            - cLbSubnetIds
+            - Key: c7n_fed-sec-sg-restrict-globally-open-ingress
+              Value: exempt
+            - !Ref AWS::NoValue
+
+
+
+
+  rMongoDBEndpointSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: MongoDB VPC Endpoint SecurityGroup
+      VpcId: !Ref pVpcId
+      # SecurityGroupEgress:
+      #   - DestinationSecurityGroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      #     Description: Allow EKS Port
+      #     FromPort: 0
+      #     ToPort: 65535
+      #     IpProtocol: '-1'
+      SecurityGroupIngress:
+        - CidrIp: !Ref pAppSubnetCIDR
+          Description: from App Subnet on 443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp: !Ref pAppSubnetCIDR
+          Description: from App Subnet on range
+          FromPort: 1024
+          IpProtocol: tcp
+          ToPort: 65535
+        - CidrIp: !Ref pAppSubnetCIDR
+          Description: from App Subnet 80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp: !Ref pEKSPodSubnetCIDR
+          Description: from ekspod Subnet 443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp: !Ref pEKSPodSubnetCIDR
+          Description: from ekspod Subnet range
+          FromPort: 1024
+          IpProtocol: tcp
+          ToPort: 65535
+        - CidrIp: !Ref pEKSPodSubnetCIDR
+          Description: from ekspod Subnet 80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp: !Ref pIntraSubnetCIDR
+          Description: from ekspod Subnet 443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp: !Ref pIntraSubnetCIDR
+          Description: from ekspod Subnet range
+          FromPort: 1024
+          IpProtocol: tcp
+          ToPort: 65535
+        - CidrIp: !Ref pIntraSubnetCIDR
+          Description: from ekspod Subnet 80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+
+        # - !If
+        #     - cLbSubnetIds
+        #     - CidrIp: 0.0.0.0/0
+        #       Description: from Internet http
+        #       FromPort: 80
+        #       IpProtocol: tcp
+        #       ToPort: 80
+        #     - !Ref AWS::NoValue
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProjectName}-mongodb-sg
+        - !If
+            - cLbSubnetIds
+            - Key: c7n_fed-sec-sg-restrict-globally-open-ingress
+              Value: exempt
+            - !Ref AWS::NoValue
+
+
+
+
+  rEgressToClusterSG: # SG: Allows egress between bastion and nodes
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress between bastion and nodes
+      FromPort: 0
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: '-1'
+      DestinationSecurityGroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      ToPort: 65535
+  rEgressToInternetHttp: # SG: Allows egress to internet
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to interent
+      FromPort: 80
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      DestinationSecurityGroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      ToPort: 80
+  rEgressToInternetHttps: # SG: Allows egress to internet
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to interent
+      FromPort: 443
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      DestinationSecurityGroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      ToPort: 443
+  rEgressToEastProxy: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to east proxy server
+      FromPort: 8080
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 208.233.162.128/25
+      ToPort: 8080
+  rEgressToEastProxy2: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to east proxy server
+      FromPort: 8080
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 208.233.163.0/26
+      ToPort: 8080
+  rEgressToWestProxy: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 8080
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 208.233.169.128/26
+      ToPort: 8080
+  rEgressToWestProxy2: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 8080
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 208.233.169.0/26
+      ToPort: 8080
+  rEgressToDefaultEks: 
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to EKS Default ports
+      FromPort: 1025
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      DestinationSecurityGroupId: !GetAtt rCluster.ClusterSecurityGroupId 
+      ToPort: 65535
+  
+  rEgressToSysdig1: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 6443
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 18.207.87.189/32
+      ToPort: 6443
+  rEgressToSysdig2: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 6443
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 54.82.115.3/32
+      ToPort: 6443
+  rEgressToSysdig3: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 6443
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 50.19.72.123/32
+      ToPort: 6443
+  rEgressToSysdig4: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 6443
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 54.190.202.108/32
+      ToPort: 6443
+  rEgressToSysdigUS21: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 6443
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 54.70.9.188/32
+      ToPort: 6443
+  rEgressToSysdigUS22: # SG: Allows egress to proxy server
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to west proxy server
+      FromPort: 6443
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: 54.203.169.53/32
+      ToPort: 6443
+
+  rEKSPodSubnetEgressToMongoDB: # SG: Allows egress to MongoDB - EKSPods Subnet
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to MongoDB
+      FromPort: 0
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: !Ref pEKSPodSubnetCIDR
+      ToPort: 65535
+  
+  rAppSubnetEgressToMongoDB: # SG: Allows egress to MongoDB - App Subnet
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to MongoDB
+      FromPort: 0
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: !Ref pAppSubnetCIDR
+      ToPort: 65535
+  rIntraSubnetEgressToMongoDB: # SG: Allows egress to MongoDB - Intra Subnet
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allows egress to MongoDB
+      FromPort: 0
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      CidrIp: !Ref pIntraSubnetCIDR
+      ToPort: 65535
+  rReferenceStationSGIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: 192.168.0.0/16
+      Description: Reference Station EDN Inbound Traffic
+      FromPort: 10011
+      IpProtocol: tcp
+      ToPort: 10025
+  rClusterSGIngress1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pClusterIngress1
+      Description: from 172.20.104.0/21:443
+      FromPort: 443
+      IpProtocol: tcp
+      ToPort: 443
+  rClusterSGIngress2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pClusterIngress2
+      Description: from 208.225.196.0/25:443
+      FromPort: 443
+      IpProtocol: tcp
+      ToPort: 443
+  rClusterSGIngress3:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pClusterIngress3
+      Description: Ingress from from Public subnet 3
+      FromPort: 443
+      IpProtocol: tcp
+      ToPort: 443
+  rAppSGIngress1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pAppSubnetCIDR1
+      Description: Ingress from App Subnet 1
+      FromPort: 0
+      IpProtocol: '-1'
+      ToPort: 65535
+  rAppSGIngress2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pAppSubnetCIDR2
+      Description: Ingress from App Subnet 2
+      FromPort: 0
+      IpProtocol: '-1'
+      ToPort: 65535
+  rAppSGIngress3:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pAppSubnetCIDR3
+      Description:  Ingress from App Subnet 3
+      FromPort: 0
+      IpProtocol: '-1'
+      ToPort: 65535
+  rEksPodSGIngress11:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pEKSPodSubnetCIDR1
+      Description:  Ingress from EKSPOD Subnet 1
+      FromPort: 0
+      IpProtocol: '-1'
+      ToPort: 65535
+  rEksPodSGIngress21:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pEKSPodSubnetCIDR2
+      Description:  Ingress from EKSPOD Subnet 2
+      FromPort: 0
+      IpProtocol: '-1'
+      ToPort: 65535
+  rEksPodSGIngress31:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      CidrIp: !Ref pEKSPodSubnetCIDR3
+      Description: Ingress from EKSPOD Subnet 3
+      FromPort: 0
+      IpProtocol: '-1'
+      ToPort: 65535
+  rClusterSGIngressLbSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt rCluster.ClusterSecurityGroupId
+      SourceSecurityGroupId: !GetAtt rLbSg.GroupId
+      Description: Allow LB SG Traffic
+      FromPort: 0
+      IpProtocol: '-1'
+      ToPort: 65535 
+  rServiceRole: # IAM Role: Cluster Role
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - !FindInMap
+                  - mServicePrincipalPartitionMap
+                  - !Ref AWS::Partition
+                  - EKS
+                - lambda.amazonaws.com
+        Version: 2012-10-17
+      Policies:
+        - PolicyName: "lambda-logs"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - "arn:aws:logs:*:*:*"
+              - Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                  - kms:CreateGrant
+                Effect: Allow
+                Resource:
+                  Fn::GetAtt:
+                    - rKey6AB29FA6
+                    - Arn
+              - Action:
+                  - eks:CreateCluster
+                  - eks:DescribeCluster
+                  - eks:DescribeUpdate
+                  - eks:DeleteCluster
+                  - eks:UpdateClusterVersion
+                  - eks:UpdateClusterConfig
+                  - eks:CreateFargateProfile
+                  - eks:TagResource
+                  - eks:UntagResource
+                Effect: Allow
+                Resource:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - !Sub :eks:${AWS::Region}:${AWS::AccountId}:cluster/${pProjectName}-${AWS::Region}
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - !Sub :eks:${AWS::Region}:${AWS::AccountId}:cluster/${pProjectName}-${AWS::Region}/*
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEKSVPCResourceController
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}/ServiceRole
+
+  ## EKS Managed Node Resources
+  rLaunchTemplate: # EC2 Launch Template for nodes
+    Condition: cUseManagedNodeGroup
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              Iops: 3000
+              Throughput: 125
+              VolumeSize: 80
+              VolumeType: gp3
+        ImageId: !Ref pDefaultAMI
+        MetadataOptions:
+          HttpPutResponseHopLimit: 2
+          HttpTokens: required
+        SecurityGroupIds:
+          - !GetAtt rCluster.ClusterSecurityGroupId
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${pProjectName}-Node  
+              #- Key: pact:ec2:os
+              #  Value: ami-Linux2
+              #- Key: "pact:customer-data"
+              #  Value: yes
+              #- Key: pact:role
+              #  Value: app
+              - Key: Application
+                Value: !Ref 'AWS::StackId'
+              - Key: "pact:launched-by"
+                Value: !Ref pTagPactLaunchedBy
+              - Key: "pact:resource-custodian"
+                Value: !Ref pTagPactResourceCustodian
+              - Key: "pact:team-owner"
+                Value: !Ref pTagPactTeamOwner
+              - Key: "pact:customer-data"
+                Value: !Ref pTagPactCustomerData
+              - Key: "pact:dataclass"
+                Value: !Ref pTagPactDataclass
+              - Key: "pact:ec2:os"
+                Value: amazon.linux.2 
+              - Key: "pact:vast-id"
+                Value: !Ref pTagPactVastId
+              - Key: "pact:vsad"
+                Value: !Ref pTagPactVsad
+              - Key: "pact:purpose"
+                Value: !Ref pTagPactPurpose     
+              - Key: "pact:lifecycle"
+                Value: !Ref pTagPactLifecycle
+              - Key: "pact:role"
+                Value: !Ref pTagPactRole            
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: !Sub ${pProjectName}-Node
+              - Key: nodegroup-type
+                Value: !Sub ${pProjectName}-managed
+              - Key: nodegroup-role
+                Value: !Sub ${pProjectName}-worker
+              - Key: nodegroup-name
+                Value: !Sub ${pProjectName}-Node
+          - ResourceType: network-interface
+            Tags:
+              - Key: Name
+                Value: !Sub ${pProjectName}-Node
+              - Key: nodegroup-type
+                Value: !Sub ${pProjectName}-managed
+              - Key: nodegroup-role
+                Value: !Sub ${pProjectName}-worker
+              - Key: nodegroup-name
+                Value: !Sub ${pProjectName}-eks-pattern
+        UserData: #Managed Node instance
+          Fn::Base64:
+            !Sub |
+              Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+              MIME-Version:  1.0
+                  
+              --==BOUNDARY==
+              Content-Type: text/cloud-boothook; charset="us-ascii"
+                    
+              #Set the proxy hostname and port
+              PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
+              PACT_PROXY_PROD=proxy.pact.verizon.com
+              PACT_PROXY_PORT=8080
+
+              # First, generate a token using the following command.
+              TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
+
+              # Use the token to call the metadata service
+              REGION=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region`
+              echo REGION: $REGION
+
+              INSTANCE_ID=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document/ | jq -r .instanceId`
+              echo INSTANCE_ID: $INSTANCE_ID
+
+              LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='pact:lifecycle'].Value"  --output text`
+              echo LIFE_CYCLE_ENV_TYPE: $LIFE_CYCLE_ENV_TYPE
+
+              # Check which proxy endpoint to use
+              echo "Checking which proxy host to use..."
+              if [ $LIFE_CYCLE_ENV_TYPE = "prod" ] || [ $LIFE_CYCLE_ENV_TYPE = "depl" ]  ; then
+                  PACT_PROXY_HOST=$PACT_PROXY_PROD     
+              else
+                  PACT_PROXY_HOST=$PACT_PROXY_NONPROD 
+              fi
+                  
+              PROXY="$PACT_PROXY_HOST:$PACT_PROXY_PORT"
+
+              MAC=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/mac/)
+              VPC_CIDR=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-ipv4-cidr-blocks | xargs | tr ' ' ',')
+                    
+              Create the containerd systemd directory
+              mkdir -p /etc/systemd/system/containerd.service.d
+                    
+              #Configure yum to use the proxy
+              cloud-init-per instance yum_proxy_config cat << EOF >> /etc/yum.conf
+              proxy=http://$PROXY
+              EOF
+                    
+              #Set the proxy for future processes, and use as an include file
+              cloud-init-per instance proxy_config cat << EOF >> /etc/environment
+              http_proxy=http://$PROXY
+              https_proxy=http://$PROXY
+              HTTP_PROXY=http://$PROXY
+              HTTPS_PROXY=http://$PROXY
+              no_proxy=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
+              NO_PROXY=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
+              EOF
+                    
+              #Configure containerd with the proxy
+              cloud-init-per instance containerd_proxy_config tee <<EOF /etc/systemd/system/containerd.service.d/http-proxy.conf >/dev/null
+              [Service]
+              EnvironmentFile=/etc/environment
+              EOF
+                   
+              #Configure the kubelet with the proxy
+              cloud-init-per instance kubelet_proxy_config tee <<EOF /etc/systemd/system/kubelet.service.d/proxy.conf >/dev/null
+              [Service]
+              EnvironmentFile=/etc/environment
+              EOF
+                    
+              #Reload the daemon and restart docker to reflect proxy configuration at launch of instance
+              cloud-init-per instance reload_daemon systemctl daemon-reload 
+              
+                  
+              --==BOUNDARY==
+              Content-Type:text/x-shellscript; charset="us-ascii"
+                
+              #!/bin/bash
+              set -o xtrace
+                  
+              #Set the proxy variables before running the bootstrap.sh script
+              set -a
+              source /etc/environment
+                  
+              /etc/eks/bootstrap.sh ${rCluster} --b64-cluster-ca ${rCluster.CertificateAuthorityData} --apiserver-endpoint ${rCluster.Endpoint}
+                  
+              --==BOUNDARY==--
+      LaunchTemplateName: !Ref AWS::StackName
+  rManagedNodeGroup: # EKS Managed Node Group
+    Condition: cUseManagedNodeGroup
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      #AmiType: AL2_x86_64
+      ClusterName: !Ref rCluster
+      InstanceTypes:
+        - !Ref pNodeInstanceType
+      Labels:
+        cluster-name: !Ref rCluster
+        nodegroup-name: !Ref rCluster
+        role: worker
+      LaunchTemplate:
+        Id: !Ref rLaunchTemplate
+        Version: !GetAtt rLaunchTemplate.LatestVersionNumber
+      NodeRole: !GetAtt rNodeInstanceRole.Arn
+      NodegroupName: !Ref rCluster
+      ScalingConfig:
+        DesiredSize: !Ref pDesiredSize
+        MaxSize: !Ref pMaxSize
+        MinSize: !Ref pMinSize
+      Subnets: !Ref pAppSubnetIds
+      Tags:
+        kubernetes.io/nodegroup-name: !Ref rCluster
+        kubernetes.io/nodegroup-type: managed
+        nodegroup-role: worker
+    DependsOn: rPrivateCluster
+  rNodeInstanceRole: # IAM Role: Nodes
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - Fn::FindInMap:
+                    - mServicePrincipalPartitionMap
+                    - Ref: AWS::Partition
+                    - EC2
+        Version: 2012-10-17
+      Policies:
+        - PolicyName: "kmsaccess"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - kms:Decrypt
+                Effect: Allow
+                Resource: 
+                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Path: /
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      #RoleName: !Sub ${AWS::StackName}-NodeInstanceRole
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-NodeInstanceRole
+  rPrivateCluster:
+    Type: 'Custom::PrivateCluster'
+    Properties:
+      ServiceToken: !GetAtt rAwscliFunction.Arn
+      TimeToWait: 895
+      domainName: !Sub ${pProjectName}-${AWS::Region}
+    DependsOn: rCluster
+  rPubSubnetTagUpdate:
+    Type: 'Custom::SubnetTagUpdate'
+    Properties:
+      ServiceToken: !GetAtt rPubTagUpdateFunction.Arn
+      TimeToWait: 120
+      PubSubnetIds: !Ref pPubSubnetIds
+      domainName: !Sub ${pProjectName}-${AWS::Region}
+  rIntraSubnetTagUpdate:
+    Type: 'Custom::SubnetTagUpdate'
+    Properties:
+      ServiceToken: !GetAtt rIntraTagUpdateFunction.Arn
+      TimeToWait: 120
+      IntraSubnetIds: !Ref pIntraSubnetIds
+      domainName: !Sub ${pProjectName}-${AWS::Region}
+  rAwscliFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: "index.handler"
+      Timeout: 895
+      #Layers:
+      #  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:boto3:34
+      Role: !GetAtt 'rServiceRole.Arn'
+      Runtime: python3.7
+      Code:
+        ZipFile: |
+          import json
+          import cfnresponse
+          import time
+          import subprocess
+          import logging
+          import os
+          import boto3
+          from botocore.exceptions import ClientError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          region = os.environ['AWS_REGION']
+          client = boto3.client('eks')
+
+          def handler(event, context):
+              try:
+                  physicalId = event['ResourceProperties']['domainName']
+                  response = client.describe_cluster(name=physicalId)
+                  print(response['cluster']['status'])
+                  print(response['cluster']["resourcesVpcConfig"]['endpointPublicAccess'])
+                  if response['cluster']['status'] == 'ACTIVE' and response['cluster']["resourcesVpcConfig"]['endpointPublicAccess'] == True:
+                      response = client.update_cluster_config(
+                          name=physicalId,
+                          resourcesVpcConfig={
+                              'endpointPublicAccess': False,
+                              'endpointPrivateAccess': True,
+                          }
+                      )
+                      logger.info(response)
+                      time.sleep(30)
+
+                  i = 0
+                  while i < 840:
+                      response = client.describe_cluster(name=physicalId)
+                      print(response['cluster']['status'], i)
+                      if response['cluster']['status'] == 'ACTIVE':
+                          print("cluster ACTIVE")
+                          time.sleep(30)
+                          break
+                      elif response['cluster']['status'] == 'DELETING':
+                          break
+                      elif response['cluster']['status'] == 'UPDATING':
+                          time.sleep(30)
+                      i += 30
+                  responseData = {}
+                  responseData['Data'] = "SUCCESS"
+                  physicalId = event['ResourceProperties']['domainName']
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                   responseData, physicalId)
+              except ClientError as e:
+                  print("Unexpected error: %s" % e)
+                  responseData = {}
+                  responseData['Data'] = "SUCCESS"
+                  physicalId = event['ResourceProperties']['domainName']
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                   responseData, physicalId)
+  rPubTagUpdateFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: "index.handler"
+      Timeout: 895
+      #Layers:
+      #  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:boto3:34
+      Role: !GetAtt 'rServiceRole.Arn'
+      Runtime: python3.7
+      Code:
+        ZipFile: |
+          import json
+          import cfnresponse
+          import time
+          import subprocess
+          import logging
+          import os
+          import boto3
+          from botocore.exceptions import ClientError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          region = os.environ['AWS_REGION']
+          ec2_resource = boto3.resource('ec2')
+
+          def handler(event, context):
+              try:
+                  PubSubnetIds = event['ResourceProperties']['PubSubnetIds']
+                  physicalId = event['ResourceProperties']['domainName']
+                  print(PubSubnetIds)
+                  for sn in PubSubnetIds:
+                      subnet_id = sn
+                      subnet = ec2_resource.Subnet(subnet_id)
+                      response = subnet.create_tags(
+                          Tags=[
+                              {
+                                  'Key': 'kubernetes.io/role/elb',
+                                  'Value': '1'
+                              },
+                              {
+                                  'Key': 'kubernetes.io/cluster/' + physicalId,
+                                  'Value': 'shared'
+                              }
+                          ]
+                      )
+                      print(response)
+
+                  responseData = {}
+                  responseData['Data'] = "SUCCESS"
+                  physicalId = "Subnets"
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                   responseData, physicalId)
+              except ClientError as e:
+                  print("Unexpected error: %s" % e)
+                  responseData = {}
+                  responseData['Data'] = "SUCCESS"
+                  physicalId = event['ResourceProperties']['domainName']
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                   responseData, physicalId)
+    
+  rIntraTagUpdateFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: "index.handler"
+      Timeout: 895
+      #Layers:
+      #  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:boto3:34
+      Role: !GetAtt 'rServiceRole.Arn'
+      Runtime: python3.7
+      Code:
+        ZipFile: |
+          import json
+          import cfnresponse
+          import time
+          import subprocess
+          import logging
+          import os
+          import boto3
+          from botocore.exceptions import ClientError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          region = os.environ['AWS_REGION']
+          ec2_resource = boto3.resource('ec2')
+
+          def handler(event, context):
+              try:
+                  IntraSubnetIds = event['ResourceProperties']['IntraSubnetIds']
+                  physicalId = event['ResourceProperties']['domainName']
+                  print(IntraSubnetIds)
+                  for sn in IntraSubnetIds:
+                      subnet_id = sn
+                      subnet = ec2_resource.Subnet(subnet_id)
+                      response = subnet.create_tags(
+                          Tags=[
+                              {
+                                  'Key': 'kubernetes.io/role/internal-elb',
+                                  'Value': '1'
+                              },
+                              {
+                                  'Key': 'kubernetes.io/cluster/' + physicalId,
+                                  'Value': 'shared'
+                              }
+                          ]
+                      )
+                      print(response)
+
+                  responseData = {}
+                  responseData['Data'] = "SUCCESS"
+                  physicalId = "Subnets"
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                   responseData, physicalId)
+              except ClientError as e:
+                  print("Unexpected error: %s" % e)
+                  responseData = {}
+                  responseData['Data'] = "SUCCESS"
+                  physicalId = event['ResourceProperties']['domainName']
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                   responseData, physicalId)
+ #rOIDCProvider:
+ #   Type: AWS::IAM::OIDCProvider
+ #   Properties: 
+ #     ClientIdList: 
+ #       - sts.amazonaws.com
+ #     Url: rCluster.OpenIdConnectIssuerUrl
+ #
+  rIamRoleForCasterReferance:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "${IamOidcProviderArn}"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {
+                            "${OidcProviderEndpoint}:sub": "system:serviceaccount:casterreference:casterreference"
+                        }
+                    }
+                }
+            ]
+          }
+        - {
+            "IamOidcProviderArn": !Join ["", ["arn:aws:iam::", !Ref "AWS::AccountId", ":oidc-provider/", !Select [1, !Split ["//", !GetAtt rCluster.OpenIdConnectIssuerUrl]]]],
+            "OidcProviderEndpoint": !Select [1, !Split ["//", !GetAtt rCluster.OpenIdConnectIssuerUrl]]
+          }
+
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonS3FullAccess
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      RoleName: !Sub ${pProjectName}-casterreference-role
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-casterreference-role
+
+  rAwsLbCtl:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "${IamOidcProviderArn}"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {
+                            "${OidcProviderEndpoint}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"
+                        }
+                    }
+                }
+            ]
+          }
+        - {
+            "IamOidcProviderArn": !Join ["", ["arn:aws:iam::", !Ref "AWS::AccountId", ":oidc-provider/", !Select [1, !Split ["//", !GetAtt rCluster.OpenIdConnectIssuerUrl]]]],
+            "OidcProviderEndpoint": !Select [1, !Split ["//", !GetAtt rCluster.OpenIdConnectIssuerUrl]]
+          }
+
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonSSMManagedInstanceCore
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      #RoleName: !Sub ${pProjectName}-lb-controller
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-lb-controller
+  rAwsloadbalancercontrollerDefaultPolicy23F19424:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - ec2:DescribeAccountAttributes
+              - ec2:DescribeAddresses
+              - ec2:DescribeAvailabilityZones
+              - ec2:DescribeInternetGateways
+              - ec2:DescribeVpcs
+              - ec2:DescribeSubnets
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeInstances
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeTags
+              - ec2:GetCoipPoolUsage
+              - ec2:DescribeCoipPools
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:DescribeLoadBalancerAttributes
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:DescribeListenerCertificates
+              - elasticloadbalancing:DescribeSSLPolicies
+              - elasticloadbalancing:DescribeRules
+              - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:DescribeTargetGroupAttributes
+              - elasticloadbalancing:DescribeTargetHealth
+              - elasticloadbalancing:DescribeTags
+              - elasticloadbalancing:AddTags
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - cognito-idp:DescribeUserPoolClient
+              - acm:ListCertificates
+              - acm:DescribeCertificate
+              - iam:ListServerCertificates
+              - iam:GetServerCertificate
+              - waf-regional:GetWebACL
+              - waf-regional:GetWebACLForResource
+              - waf-regional:AssociateWebACL
+              - waf-regional:DisassociateWebACL
+              - wafv2:GetWebACL
+              - wafv2:GetWebACLForResource
+              - wafv2:AssociateWebACL
+              - wafv2:DisassociateWebACL
+              - shield:GetSubscriptionState
+              - shield:DescribeProtection
+              - shield:CreateProtection
+              - shield:DeleteProtection
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:RevokeSecurityGroupIngress
+            Effect: Allow
+            Resource: "*"
+          - Action: ec2:CreateSecurityGroup
+            Effect: Allow
+            Resource: "*"
+          - Action: ec2:CreateTags
+            Condition:
+              StringEquals:
+                ec2:CreateAction: CreateSecurityGroup
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "false"
+            Effect: Allow
+            Resource: arn:aws:ec2:*:*:security-group/*
+          - Action:
+              - ec2:CreateTags
+              - ec2:DeleteTags
+            Condition:
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "true"
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+            Effect: Allow
+            Resource: arn:aws:ec2:*:*:security-group/*
+          - Action:
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:RevokeSecurityGroupIngress
+              - ec2:DeleteSecurityGroup
+            Condition:
+              "Null":
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - elasticloadbalancing:CreateLoadBalancer
+              - elasticloadbalancing:CreateTargetGroup
+            Condition:
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "false"
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - elasticloadbalancing:CreateListener
+              - elasticloadbalancing:DeleteListener
+              - elasticloadbalancing:CreateRule
+              - elasticloadbalancing:DeleteRule
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - elasticloadbalancing:AddTags
+              - elasticloadbalancing:RemoveTags
+            Condition:
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "true"
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+            Effect: Allow
+            Resource:
+              - arn:aws:elasticloadbalancing:*:*:targetgroup/*/*
+              - arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*
+              - arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*
+          - Action:
+              - elasticloadbalancing:AddTags
+              - elasticloadbalancing:RemoveTags
+            Effect: Allow
+            Resource:
+              - arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*
+              - arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*
+              - arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*
+              - arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*
+          - Action:
+              - elasticloadbalancing:ModifyLoadBalancerAttributes
+              - elasticloadbalancing:SetIpAddressType
+              - elasticloadbalancing:SetSecurityGroups
+              - elasticloadbalancing:SetSubnets
+              - elasticloadbalancing:DeleteLoadBalancer
+              - elasticloadbalancing:ModifyTargetGroup
+              - elasticloadbalancing:ModifyTargetGroupAttributes
+              - elasticloadbalancing:DeleteTargetGroup
+            Condition:
+              "Null":
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - elasticloadbalancing:RegisterTargets
+              - elasticloadbalancing:DeregisterTargets
+            Effect: Allow
+            Resource: arn:aws:elasticloadbalancing:*:*:targetgroup/*/*
+          - Action:
+              - elasticloadbalancing:SetWebAcl
+              - elasticloadbalancing:ModifyListener
+              - elasticloadbalancing:AddListenerCertificates
+              - elasticloadbalancing:RemoveListenerCertificates
+              - elasticloadbalancing:ModifyRule
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: rAwsloadbalancercontrollerDefaultPolicy23F19424
+      Roles:
+        - Ref: rAwsLbCtl
+  rBastionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSClusterPolicy
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEKSVPCResourceController
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonS3ReadOnlyAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonEC2ReadOnlyAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/CloudWatchAgentServerPolicy
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      #RoleName: !Sub ${pProjectName}-bastion-role
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProjectName}-${AWS::Region}-bastion-role
+
+  rKey6AB29FA6:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action: kms:*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - !Sub :iam::${AWS::AccountId}:root
+            Resource: "*"
+          - Action: 
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Resource: "*"
+        Version: "2012-10-17"
+      EnableKeyRotation: true
+  rKmsAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${pProjectName}-1
+      TargetKeyId: !Ref rKey6AB29FA6
+      
+  rTrustedRolePolicy7BAA60CF:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+             - kms:Create*
+             - kms:Describe*
+             - kms:Enable*
+             - kms:List*
+             - kms:Put*
+             - kms:Update*
+             - kms:Revoke*
+             - kms:Disable*
+             - kms:Get*
+             - kms:Delete*
+             - kms:TagResource
+             - kms:UntagResource
+             - kms:ScheduleKeyDeletion
+             - kms:CancelKeyDeletion
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - rKey6AB29FA6
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: rTrustedRolePolicy7BAA60CF
+      Roles:
+        - !Sub ${rBastionRole}
+  rBastionInstanceRoleDefaultPolicy76F0DFBF:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - eks:*
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - !Sub :eks:${AWS::Region}:${AWS::AccountId}:cluster/${pProjectName}-${AWS::Region}
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - !Sub :eks:${AWS::Region}:${AWS::AccountId}:cluster/${pProjectName}-${AWS::Region}/*
+          - Action: 
+            - eks:ListClusters 
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - !Sub :eks:${AWS::Region}:${AWS::AccountId}:cluster/*
+          - Action: 
+            - s3:Get*
+            - s3:List*
+            - s3:Describe*
+            - s3:PutObject
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - !Sub :s3:::*-hpl-*/*
+        Version: "2012-10-17"
+      PolicyName: rBastionInstanceRoleDefaultPolicy76F0DFBF
+      Roles:
+        - Ref: rBastionRole
+  rInstanceASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    #CreationPolicy:
+    #  ResourceSignal:
+    #    Count: 1
+    #    Timeout: PT5M
+    #UpdatePolicy:
+    #  AutoScalingRollingUpdate:
+    #    PauseTime: PT10M
+    #    WaitOnResourceSignals: true
+    Properties:
+      AutoScalingGroupName: !Ref pProjectName
+      MinSize: "1"
+      MaxSize: "1"
+      DesiredCapacity: "1"
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref rLaunchTemplateEERH
+        Version: !GetAtt rLaunchTemplateEERH.LatestVersionNumber
+      VPCZoneIdentifier: !Ref pAppSubnetIds
+      MetricsCollection:
+        - Granularity: "1Minute"
+          Metrics:
+            - "GroupMinSize"
+            - "GroupMaxSize"
+  rInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Sub ${rBastionRole}
+    DependsOn: rBastionRole
+  rLaunchTemplateEERH:
+    Type: AWS::EC2::LaunchTemplate
+    DependsOn: rPrivateCluster
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: 80
+        IamInstanceProfile:
+          Name: !Ref rInstanceProfile
+        ImageId: !Ref pBastionHostAMI
+        InstanceType: !Ref rBastionHostInstanceType
+        MetadataOptions:
+          HttpPutResponseHopLimit: 2
+          HttpTokens: required
+        SecurityGroupIds:
+          - !GetAtt rCluster.ClusterSecurityGroupId
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${pProjectName}-${AWS::Region}-Bastion
+              #- Key: pact:ec2:os
+              #  Value: ami-Linux2
+              #- Key: "pact:customer-data"
+              #  Value: yes
+              #- Key: pact:role
+              #  Value: app
+              - Key: Application
+                Value: !Ref 'AWS::StackId'
+              - Key: "pact:launched-by"
+                Value: !Ref pTagPactLaunchedBy
+              - Key: "pact:resource-custodian"
+                Value: !Ref pTagPactResourceCustodian
+              - Key: "pact:team-owner"
+                Value: !Ref pTagPactTeamOwner
+              - Key: "pact:customer-data"
+                Value: !Ref pTagPactCustomerData
+              - Key: "pact:dataclass"
+                Value: !Ref pTagPactDataclass
+              - Key: "pact:ec2:os"
+                Value: amazon.linux.2 
+              - Key: "pact:vast-id"
+                Value: !Ref pTagPactVastId
+              - Key: "pact:vsad"
+                Value: !Ref pTagPactVsad
+              - Key: "pact:purpose"
+                Value: !Ref pTagPactPurpose     
+              - Key: "pact:lifecycle"
+                Value: !Ref pTagPactLifecycle
+              - Key: "pact:role"
+                Value: !Ref pTagPactRole
+        UserData: #BastionHost instance
+          Fn::Base64:
+            !Sub 
+            - |
+              #!/bin/bash -xe
+              #bastion rehydration
+              export EKS_CLUSTER=${rCluster}
+              export REGION=${AWS::Region}
+              export ACCT=${AWS::AccountId}
+
+              PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
+              PACT_PROXY_PROD=proxy.pact.verizon.com
+              PACT_PROXY_PORT=8080
+
+              # First, generate a token using the following command.
+              TOKEN=`curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 900"`
+
+              # Use the token to call the metadata service
+              REGION=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region`
+              echo REGION: $REGION
+
+              INSTANCE_ID=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document/ | jq -r .instanceId`
+              echo INSTANCE_ID: $INSTANCE_ID
+
+              LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='pact:lifecycle'].Value"  --output text`
+              echo LIFE_CYCLE_ENV_TYPE: $LIFE_CYCLE_ENV_TYPE
+
+              # Check which proxy endpoint to use
+              echo "Checking which proxy host to use..."
+              if [ $LIFE_CYCLE_ENV_TYPE = "prod" ] || [ $LIFE_CYCLE_ENV_TYPE = "depl" ]  ; then
+                  PACT_PROXY_HOST=$PACT_PROXY_PROD 
+              else
+                  PACT_PROXY_HOST=$PACT_PROXY_NONPROD  
+              fi
+              export http_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
+              echo "export http_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export https_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
+              echo "export https_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export HTTP_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
+              echo "export HTTP_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export HTTPS_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
+              echo "export HTTPS_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export no_proxy='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'
+              echo "export no_proxy='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'" >> /etc/profile.d/no_proxy.sh
+              export NO_PROXY='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,localhost,bullseye.com,es.amazonaws.com,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'
+              echo "export NO_PROXY='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'" >> /etc/profile.d/no_proxy.sh
+              source /etc/profile
+
+              curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.26.7/2023-08-16/bin/linux/amd64/kubectl
+              chmod 755 ./kubectl
+              mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+              echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+              kubectl version --short --client
+              aws eks update-kubeconfig --name $EKS_CLUSTER --region $REGION
+              export KUBECONFIG=$USER/.kube/config
+
+              #kubectl get nodes
+              # yum install docker -y
+              # systemctl enable docker
+              # systemctl start docker
+              # aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
+              # # MongoDB cli Installation
+              # curl -o "https://fastdl.mongodb.org/mongocli/mongocli_1.30.0_linux_x86_64.rpm"
+              # cd mcli_1.30.0-macOS_x86_64
+              # mv mongocli /usr/local/bin
+              # mongocli help
+
+              # eksctl Installation
+              ARCH=amd64
+              PLATFORM=$(uname -s)_$ARCH
+              curl -sLO "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$PLATFORM.tar.gz"
+              # (Optional) Verify checksum
+              #curl -sL "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_checksums.txt" | grep $PLATFORM | sha256sum --check
+              tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
+              sudo mv /tmp/eksctl /usr/local/bin
+
+              # helm Installation
+              curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
+              chmod 700 get_helm.sh
+              ./get_helm.sh
+              env
+              cat <<EOF >> ~/.bashrc
+              alias k='kubectl'
+              alias kexn='kubectl exec -i -t --namespace'
+              alias klon='kubectl logs -f --namespace'
+              alias kpfn='kubectl port-forward --namespace'
+              alias kgn='kubectl get --namespace'
+              alias kdn='kubectl describe --namespace'
+              alias krmn='kubectl delete --namespace'
+              alias kgpon='kubectl get pods --namespace'
+              alias kdpon='kubectl describe pods --namespace'
+              alias krmpon='kubectl delete pods --namespace'
+              alias kgdepn='kubectl get deployment --namespace'
+              alias kddepn='kubectl describe deployment --namespace'
+              alias krmdepn='kubectl delete deployment --namespace'
+              alias kgstsn='kubectl get statefulset --namespace'
+              alias kdstsn='kubectl describe statefulset --namespace'
+              alias krmstsn='kubectl delete statefulset --namespace'
+              alias kgsvcn='kubectl get service --namespace'
+              alias kdsvcn='kubectl describe service --namespace'
+              alias krmsvcn='kubectl delete service --namespace'
+              alias kgingn='kubectl get ingress --namespace'
+              alias kdingn='kubectl describe ingress --namespace'
+              alias krmingn='kubectl delete ingress --namespace'
+              alias kgcmn='kubectl get configmap --namespace'
+              alias kdcmn='kubectl describe configmap --namespace'
+              alias krmcmn='kubectl delete configmap --namespace'
+              alias kgsecn='kubectl get secret --namespace'
+              alias kdsecn='kubectl describe secret --namespace'
+              alias krmsecn='kubectl delete secret --namespace'
+              alias kg='kubectl get'
+              alias kd='kubectl describe'
+              alias krm='kubectl delete'
+              alias kgpo='kubectl get pods'
+              alias kgno='kubectl get nodes'
+              alias kdno='kubectl describe nodes'
+              alias kgns='kubectl get namespaces'
+              alias kdns='kubectl describe namespaces'
+              alias krmns='kubectl delete namespaces'
+              alias kgall='kubectl get --all-namespaces'
+              alias kdall='kubectl describe --all-namespaces'
+              alias kgpoall='kubectl get pods --all-namespaces'
+              alias kdpoall='kubectl describe pods --all-namespaces'
+              alias kgdepall='kubectl get deployment --all-namespaces'
+              alias kddepall='kubectl describe deployment --all-namespaces'
+              alias kgstsall='kubectl get statefulset --all-namespaces'
+              alias kdstsall='kubectl describe statefulset --all-namespaces'
+              alias kgsvcall='kubectl get service --all-namespaces'
+              alias kdsvcall='kubectl describe service --all-namespaces'
+              alias kgingall='kubectl get ingress --all-namespaces'
+              alias kdingall='kubectl describe ingress --all-namespaces'
+              alias kgcmall='kubectl get configmap --all-namespaces'
+              alias kdcmall='kubectl describe configmap --all-namespaces'
+              alias kgsecall='kubectl get secret --all-namespaces'
+              alias kdsecall='kubectl describe secret --all-namespaces'
+              alias kgnsall='kubectl get namespaces --all-namespaces'
+              alias kdnsall='kubectl describe namespaces --all-namespaces'
+              alias kgsl='kubectl get --show-labels'
+              alias ka='kubectl apply --recursive -f'
+              alias kak='kubectl apply -k'
+              alias kex='kubectl exec -i -t'
+              alias klo='kubectl logs -f'
+              alias ksyslo='kubectl --namespace=kube-system logs -f'
+              alias klop='kubectl logs -f -p'
+              alias kp='kubectl proxy'
+              alias kpf='kubectl port-forward'
+              EOF
+              /opt/aws/bin/cfn-signal -s true --stack ${AWS::StackName} --resource rInstanceASG --region ${AWS::Region} || true # Or'ed with true to ignore errors
+            - ENV:
+                ${pEnvironment}
+
+  ## EKS Instance Profile
+  rEksInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Sub ${rNodeInstanceRole}
+
+  ## EFS for EKS cluster
+  rClusterEFS:
+    Type: AWS::EFS::FileSystem
+    # Condition: cIsNotDev
+    Properties:
+      BackupPolicy:
+        Status: ENABLED
+      Encrypted: true
+      FileSystemTags:
+        - Key: Name
+          Value: HPL
+      LifecyclePolicies:
+        - TransitionToIA: AFTER_30_DAYS
+      PerformanceMode: generalPurpose
+      ThroughputMode: provisioned
+      ProvisionedThroughputInMibps: 300
+
+  EFSAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    # Condition: cIsNotDev
+    Properties:
+      AccessPointTags:
+        - Key: Name
+          Value: geodata
+      FileSystemId: !Ref rClusterEFS
+      PosixUser:
+        Gid: "999"
+        Uid: "999"
+      RootDirectory:
+        CreationInfo: 
+          OwnerGid: "999"
+          OwnerUid: "999"
+          Permissions: "0755"
+        Path: /
+
+  MountTargetResource1:
+    Type: AWS::EFS::MountTarget
+    # Condition: cIsNotDev
+    Properties:
+      FileSystemId: !Ref rClusterEFS
+      SubnetId: !Select [0, !Ref pAppSubnetIds]
+      SecurityGroups:
+        - !GetAtt rCluster.ClusterSecurityGroupId
+
+  MountTargetResource2ion:
+    Type: AWS::EFS::MountTarget
+    # Condition: cIsNotDev
+    Properties:
+      FileSystemId: !Ref rClusterEFS
+      SubnetId: !Select [1, !Ref pAppSubnetIds]
+      SecurityGroups:
+        - !GetAtt rCluster.ClusterSecurityGroupId
+
+  MountTargetResource3ion:
+    Type: AWS::EFS::MountTarget
+    # Condition: cIsNotDev
+    Properties:
+      FileSystemId: !Ref rClusterEFS
+      SubnetId: !Select [2, !Ref pAppSubnetIds]
+      SecurityGroups:
+        - !GetAtt rCluster.ClusterSecurityGroupId
+
+  ## Exported SSM Paramters
+  rSsmParameterEksPodSubnetId0: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-EKSPodSubnetId0
+      Type: String
+      Value: !Select [0, !Ref pEKSPodSubnetIds]
+  rSsmParameterEksPodSubnetId1: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-EKSPodSubnetId1
+      Type: String
+      Value: !Select [1, !Ref pEKSPodSubnetIds]
+  rSsmParameterEksPodSubnetId2: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-EKSPodSubnetId2
+      Type: String
+      Value: !Select [2, !Ref pEKSPodSubnetIds]
+
+  rSsmParameterClusterSecurityGroup: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-ClusterSecurityGroup
+      Type: String
+      Value: !GetAtt rCluster.ClusterSecurityGroupId
+  rSsmParameterClusterEndpoint: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-Endpoint
+      Type: String
+      Value: !GetAtt rCluster.Endpoint
+  rSsmParameterClusterIamRole: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-Cluster-Role
+      Type: String
+      Value: !GetAtt rServiceRole.Arn
+  rSsmParameterClusterCertificateAuthorityData: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-CertificateAuthorityData
+      Type: String
+      Value: !GetAtt rCluster.CertificateAuthorityData
+  rSsmParameterClusterKey: # Exported SSM Paramter - EKS Cluster Security Group Id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-KeyArn
+      Type: String
+      Value: !GetAtt rKey6AB29FA6.Arn
+  rSsmParameterBastionRole:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-Bastion-Role
+      Type: String
+      Value: !GetAtt rBastionRole.Arn
+  rSsmParameterNodenRole:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-Node-Role
+      Type: String
+      Value: !GetAtt rNodeInstanceRole.Arn
+  rSsmParameterSuperAdminRole:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-SuperAdmin-Role
+      Type: String
+      Value: !Sub arn:aws:iam::${AWS::AccountId}:role/pact-sso-superadmin-${pEnvironment}
+  rSsmParameterLbControllerRole:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-Lb-Controller-Role
+      Type: String
+      Value: !GetAtt rAwsLbCtl.Arn
+  rSsmParameterLbSg:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-Lb-Sg
+      Type: String
+      Value: !Sub ${rLbSg}
+  rSsmParameterRoverSg:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${pProjectName}-Rover-Sg
+      Type: String
+      Value: !Sub ${rRoverSg}
+  rCrossAccountDeplRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${pProjectName}-role-${pEnvironment}-jenkinsxaccount-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS: !Ref pDeplAccountNumber
+        Version: "2012-10-17"
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      Policies:
+        - PolicyName: crossaccountdepl
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowJenkinsS3
+                Effect: Allow
+                Action: # Documentation says codedeploy:* but cnf_nag says no
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:PutImage
+                  - ecr:ListImages
+                  - ecr:SetRepositoryPolicy
+                  - ecr:Batch*
+                Resource:
+                  - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*
+              # - Sid: AllowJenkinsCodeDeploy
+              #   Effect: Allow
+              #   Action: # Documentation says codedeploy:* but cnf_nag says no
+              #     - codedeploy:CreateDeployment
+              #     - codedeploy:GetDeployment
+              #     - codedeploy:GetDeploymentConfig
+              #     - codedeploy:GetApplicationRevision
+              #     - codedeploy:RegisterApplicationRevision
+              #   Resource:
+              #     - !Sub arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:*/*
+              #     - !Sub arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:*
+              #     - !Sub arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:*
+      Tags:
+        - Key: Name
+          Value: !Sub ${pProjectName}-role-${pEnvironment}-jenkinsxaccount-${AWS::Region}
+        - Key: pact:lifecycle
+          Value: !Ref pEnvironment
+        - Key: pact:vsad
+          Value: !Ref pTagPactVsad
+        - Key: pact:vast-id
+          Value: !Ref pTagPactVastId
+        - Key: pact:purpose
+          Value: IAM Role for XAccount CodeDeploy From Jenkins
+        - Key: pact:dataclass
+          Value: !Ref pTagPactDataclass
+        - Key: pact:launched-by
+          Value: !Ref pTagPactLaunchedBy
+        - Key: pact:resource-custodian
+          Value: !Ref pTagPactResourceCustodian
+        - Key: pact:team-owner
+          Value: !Ref pTagPactTeamOwner

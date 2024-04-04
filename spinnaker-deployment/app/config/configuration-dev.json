@@ -1,0 +1,15 @@
+{
+  "Parameters": {
+    "pS3Bucket": "pm-app1-cluster-spinnaker-us-east-1",
+    "pHelmChartRepoName": "castervrtreference",
+    "pChartVersion": "0.1.0"
+  },
+  "Tags" : {
+    "pact:purpose": "Application Purpose",
+    "pact:customer-data": "true",
+    "pact:dataclass": "high-conf",
+    "pact:team-owner": "abc@verizon.com",
+    "pact:launched-by": "abc@verizon.com",
+    "pact:resource-custodian": "abc@verizon.com"
+  }
+}
