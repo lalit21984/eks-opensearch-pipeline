@@ -15,23 +15,23 @@ Parameters:
   pLaunchBy:
     Type: String
     Description: Email ID of who is launching the product
-    Default: "manohar.arranagu@verizon.com"
+    Default: "abc.def@abcpt.com"
   pVsadTag:
     Type: String          #'AWS::SSM::Parameter::Value<String>'
-    Description: VZ VSAD ID
-    Default: "D4JV"
+    Description: abpt VSAD ID
+    Default: "ab"
   pVastTag:
     Type: String                #'AWS::SSM::Parameter::Value<String>'
-    Description: VZ VAST ID
+    Description: abpt VAST ID
     Default: "2492"
   pTeamOwnerEmail:
     Description: Team Owner Email
     Type: String
-    Default: "pact@verizon.com"
+    Default: "dept@abcpt.com"
   pResourceCustodianTag:
     Description: Resource Custodian
     Type: String
-    Default: "pact@verizon.com"
+    Default: "dept@abcpt.com"
 
 ########################################
 ###OpenSearch Configuration Parameters##
@@ -196,81 +196,24 @@ Resources:
           ToPort: 65535
           CidrIp: 0.0.0.0/0
           Description: "Allow HTTPS Outbound"
-      SecurityGroupIngress:
-        - IpProtocol: -1
-          FromPort: -1
-          ToPort: -1
-          CidrIp: 127.0.0.1/32
-          Description: Default local host all traffic
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 68.128.0.0/16
-          Description: "Allow HTTP Traffic from clients (VZ)"
-##Allow Employee VPN Traffic into Intranet Subnets##
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 63.12.0.0/14
-          Description: "Allow HTTP Traffic from VZW VPN"
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: !Ref pVPCCidrBlock1
-          Description: "Allow HTTPS Traffic from VPC P1"
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: !Ref pVPCCidrBlock2
-          Description: "Allow HTTPS Traffic from VPC P2"
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 159.67.232.0/21
-          Description: FHEBPSSLVPN
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 159.67.224.0/20
-          Description: FHEBPSSLVPN
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 204.61.76.0/22
-          Description: SACEBPVPN
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 204.61.72.0/21
-          Description: SACEBPVPN
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 204.61.64.0/21
-          Description: TPAEBPSSLVPN
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 204.61.68.0/22
-          Description: TPAEBPSSLVPN
       Tags:
         - Key: Name
           Value: !Sub ${pProduct}-os-sg-${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
+        - Key: dept:vsad
           Value: !Ref pVsadTag
-        - Key: pact:vast
+        - Key: dept:vast
           Value: !Ref pVastTag
-        - Key: pact:purpose
+        - Key: dept:purpose
           Value: SG to use with OpenSearch and Dashboard
-        - Key: pact:dataclass
+        - Key: dept:dataclass
           Value: private
-        - Key: pact:team-owner
-          Value: pact@verizon.com
-        - Key: pact:launched-by
+        - Key: dept:team-owner
+          Value: dept@abcpt.com
+        - Key: dept:launched-by
           Value: !Ref pLaunchBy
-        - Key: pact:resource-custodian
+        - Key: dept:resource-custodian
           Value: !Ref pLaunchBy
 
   # rOSServiceLinkedRole:
@@ -365,19 +308,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${pProduct}-master-secret--${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
+        - Key: dept:vsad
           Value: !Ref pVsadTag
-        - Key: pact:vast-id
+        - Key: dept:vast-id
           Value: !Ref pVastTag
-        - Key: pact:purpose
+        - Key: dept:purpose
           Value: Secret for
-        - Key: pact:launched-by
+        - Key: dept:launched-by
           Value: !Ref pLaunchBy
-        - Key: pact:resource-custodian
+        - Key: dept:resource-custodian
           Value: !Ref pResourceCustodianTag
-        - Key: pact:team-owner
+        - Key: dept:team-owner
           Value: !Ref pTeamOwnerEmail
 
 
@@ -453,19 +396,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${pProduct}-oscluster-${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
+        - Key: dept:vsad
           Value: !Ref pVsadTag
-        - Key: pact:vast-id
+        - Key: dept:vast-id
           Value: !Ref pVastTag
-        - Key: pact:purpose
+        - Key: dept:purpose
           Value: WAF for FM application
-        - Key: pact:launched-by
+        - Key: dept:launched-by
           Value: !Ref pLaunchBy
-        - Key: pact:resource-custodian
+        - Key: dept:resource-custodian
           Value: !Ref pResourceCustodianTag
-        - Key: pact:team-owner
+        - Key: dept:team-owner
           Value: !Ref pTeamOwnerEmail
 
   rSlowSearchLogGroup:
@@ -476,19 +419,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${pProduct}-slowsearchloggroup-${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
+        - Key: dept:vsad
           Value: !Ref pVsadTag
-        - Key: pact:vast-id
+        - Key: dept:vast-id
           Value: !Ref pVastTag
-        - Key: pact:purpose
+        - Key: dept:purpose
           Value: WAF for FM application
-        - Key: pact:launched-by
+        - Key: dept:launched-by
           Value: !Ref pLaunchBy
-        - Key: pact:resource-custodian
+        - Key: dept:resource-custodian
           Value: !Ref pResourceCustodianTag
-        - Key: pact:team-owner
+        - Key: dept:team-owner
           Value: !Ref pTeamOwnerEmail
 
   rIndexSlowLogGroup:
@@ -499,19 +442,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${pProduct}-indexslowloggroup-${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
+        - Key: dept:vsad
           Value: !Ref pVsadTag
-        - Key: pact:vast-id
+        - Key: dept:vast-id
           Value: !Ref pVastTag
-        - Key: pact:purpose
+        - Key: dept:purpose
           Value: WAF for FM application
-        - Key: pact:launched-by
+        - Key: dept:launched-by
           Value: !Ref pLaunchBy
-        - Key: pact:resource-custodian
+        - Key: dept:resource-custodian
           Value: !Ref pResourceCustodianTag
-        - Key: pact:team-owner
+        - Key: dept:team-owner
           Value: !Ref pTeamOwnerEmail
 
   rErrorLogGroup:
@@ -522,19 +465,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${pProduct}-apperrorgroup-${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
+        - Key: dept:vsad
           Value: !Ref pVsadTag
-        - Key: pact:vast-id
+        - Key: dept:vast-id
           Value: !Ref pVastTag
-        - Key: pact:purpose
+        - Key: dept:purpose
           Value: WAF for FM application
-        - Key: pact:launched-by
+        - Key: dept:launched-by
           Value: !Ref pLaunchBy
-        - Key: pact:resource-custodian
+        - Key: dept:resource-custodian
           Value: !Ref pResourceCustodianTag
-        - Key: pact:team-owner
+        - Key: dept:team-owner
           Value: !Ref pTeamOwnerEmail
 
   rAuditLogGroup:
@@ -545,19 +488,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${pProduct}-auditloggroup-${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
+        - Key: dept:vsad
           Value: !Ref pVsadTag
-        - Key: pact:vast-id
+        - Key: dept:vast-id
           Value: !Ref pVastTag
-        - Key: pact:purpose
+        - Key: dept:purpose
           Value: WAF for FM application
-        - Key: pact:launched-by
+        - Key: dept:launched-by
           Value: !Ref pLaunchBy
-        - Key: pact:resource-custodian
+        - Key: dept:resource-custodian
           Value: !Ref pResourceCustodianTag
-        - Key: pact:team-owner
+        - Key: dept:team-owner
           Value: !Ref pTeamOwnerEmail
 
   rAddAuditResourcePolicy:
@@ -604,7 +547,7 @@ Resources:
           Principal:
             Service: lambda.amazonaws.com
           Action: sts:AssumeRole
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
   rLambdaRolePolicies:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:

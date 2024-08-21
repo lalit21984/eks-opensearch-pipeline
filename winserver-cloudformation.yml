@@ -1,16 +1,16 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: 'AWS::LanguageExtensions'
-Description: RTK Server Pattern - Windows Server 2019
+Description: dept Server Pattern - Windows Server 2019
 
 Parameters:
   pProjectName:
     Type: String
   pDefaultInstanceType:
     Type: String
-    Description: Provide an EC2 Instance type for RTK instances
+    Description: Provide an EC2 Instance type for dept instances
   pDefaultSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: Subnets for RTK servers
+    Description: Subnets for dept servers
   pDefaultAMI:
     # Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Type: String
@@ -21,469 +21,64 @@ Parameters:
   pDesiredSize:
     Type: Number
     Default: "1"
-  pMaxSize:
+  amaxSize:
     Type: Number
     Default: "2"
-  pMinSize:
+  aminSize:
     Type: Number
     Default: "1"
   pEnvironment:
     Type: String
   pServerNames: 
     Type: CommaDelimitedList
-    Default: "SpdrNetEast,SpdrNetSoth,SpdrNetWest,SpdrNetNrth,SpdrNetCtrl,SpdrClsE1,SpdrClsE2,SpdrClsE3,SpdrClsS1,SpdrClsS2,SpdrClsS3,SpdrClsW1,SpdrClsW2,SpdrClsW3,SpdrClsN1,SpdrClsN2,SpdrClsC1,SpdrClsC2,SpdrSteNe,SpdrSteGl,SpdrSteMa,SpdrSteSe,SpdrSteFl,SpdrStePa,SpdrSteSw,SpdrSteNw,SpdrSteGp,SpdrSteMw,SpdrSteMt,SpdrSteSc,SpdrSteTx"
+    Default: "acdrNetEast,acdrNetSoth,acdrNetWest,acdrNetNrth,acdrNetCtrl,acdrClsE1,acdrClsE2,acdrClsE3,acdrClsS1,acdrClsS2,acdrClsS3,acdrClsW1,acdrClsW2,acdrClsW3,acdrClsN1,acdrClsN2,acdrClsC1,acdrClsC2,acdrSteNe,acdrSteGl,acdrSteMa,acdrSteSe,acdrSteFl,acdrStePa,acdrSteSw,acdrSteNw,acdrSteGp,acdrSteMw,acdrSteMt,acdrSteSc,acdrSteTx"
 ### Tag Parameters ################
-  pTagPactCustomerData:
+  pTagdeptCustomerData:
     Type: String
-  pTagPactDataclass:
+  pTagdeptDataclass:
     Type: String
-  pTagPactLaunchedBy:
+  pTagdeptLaunchedBy:
     Type: String
-  pTagPactLifecycle:
+  pTagdeptLifecycle:
     Type: String
-  pTagPactPurpose:
+  pTagdeptPurpose:
     Type: String
-  pTagPactResourceCustodian:
+  pTagdeptResourceCustodian:
     Type: String
-  pTagPactTeamOwner:
+  pTagdeptTeamOwner:
     Type: String
-  pTagPactVastId:
+  pTagdeptVastId:
     Type: String
-  pTagPactVsad:
+  pTagdeptVsad:
     Type: String
-  pTagPactRole:
+  pTagdeptRole:
     Type: String
-  pTagPactServerType:
+  pTagdeptServerType:
     Type: String
 
 Mappings:
   
   amiExcemptTags:
     dev: 
-      45days: "fed-gov-non-prod-ec2-ami-no-launch-after-45days"
-      90days: "fed-gov-non-prod-ec2-ami-age-90days"
-      120days: "fed-gov-non-prod-ec2-ami-age-120days"
-      135days: "fed-gov-non-prod-ec2-ami-age-135days"
-    test: 
-      45days: "fed-gov-non-prod-ec2-ami-no-launch-after-45days"
-      90days: "fed-gov-non-prod-ec2-ami-age-90days"
-      120days: "fed-gov-non-prod-ec2-ami-age-120days"
-      135days: "fed-gov-non-prod-ec2-ami-age-135days"
-    preprod: 
-      45days: "fed-gov-non-prod-ec2-ami-no-launch-after-45days"
-      90days: "fed-gov-non-prod-ec2-ami-age-90days"
-      120days: "fed-gov-non-prod-ec2-ami-age-120days"
-      135days: "fed-gov-non-prod-ec2-ami-age-135days"
-    prod: 
-      45days: "fed-gov-prod-ec2-ami-no-launch-after-45days"
-      90days: "fed-gov-prod-ec2-ami-age-90days"
-      120days: "fed-gov-prod-ec2-ami-age-120days"
-      135days: "fed-gov-prod-ec2-ami-age-135days"
+      45days: "fed--non-prod-ec2-ami-no-launch-after-45days"
+      90days: "fed--non-prod-ec2-ami-age-90days"
+      120days: "fed--non-prod-ec2-ami-age-120days"
+      135days: "fed--non-prod-ec2-ami-age-135days"
 
   mServers:
-    SpdrNetEast:
-      Name: spdr-net-east
+    acdrNetEast:
+      Name: acdr-net-east
       InstanceSize: c6i.4xlarge
       DiskSize: 200
       TagValue: network
       PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64"
+        - "subnet-444"
       PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab"
+        - "subnet-44"
       ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859"
+        - "subnet-444"
       ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6"
-    SpdrNetSoth:
-      Name: spdr-net-soth
-      InstanceSize: c6i.4xlarge
-      DiskSize: 200
-      TagValue: network
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrNetWest:
-      Name: spdr-net-west
-      InstanceSize: c6i.4xlarge
-      DiskSize: 200
-      TagValue: network
-      PreProdRegion1Subnet: 
-        - "subnet-0c049a452ca99b458" #c
-      PreProdRegion2Subnet: 
-        - "subnet-080376ce5d1253565" #c
-      ProdRegion1Subnet: 
-        - "subnet-0e3f0e584a4e036dd" #c
-      ProdRegion2Subnet: 
-        - "subnet-0956e4ee7f67981c1" #c
-    SpdrNetNrth:
-      Name: spdr-net-nrth
-      InstanceSize: c6i.4xlarge
-      DiskSize: 200
-      TagValue: network
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrNetCtrl:
-      Name: spdr-net-ctrl
-      InstanceSize: c6i.4xlarge
-      DiskSize: 200
-      TagValue: network
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrClsE1:
-      Name: spdr-cls-e1
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrClsE2:
-      Name: spdr-cls-e2
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrClsE3:
-      Name: spdr-cls-e3
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrClsS1:
-      Name: spdr-cls-s1
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrClsS2:
-      Name: spdr-cls-s2
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrClsS3:
-      Name: spdr-cls-s3
-      InstanceSize: c6i.xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrClsW1:
-      Name: spdr-cls-w1
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0c049a452ca99b458" #c
-      PreProdRegion2Subnet: 
-        - "subnet-080376ce5d1253565" #c
-      ProdRegion1Subnet: 
-        - "subnet-0e3f0e584a4e036dd" #c
-      ProdRegion2Subnet: 
-        - "subnet-0956e4ee7f67981c1" #c
-    SpdrClsW2:
-      Name: spdr-cls-w2
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0c049a452ca99b458" #c
-      PreProdRegion2Subnet: 
-        - "subnet-080376ce5d1253565" #c
-      ProdRegion1Subnet: 
-        - "subnet-0e3f0e584a4e036dd" #c
-      ProdRegion2Subnet: 
-        - "subnet-0956e4ee7f67981c1" #c
-    SpdrClsW3:
-      Name: spdr-cls-w3
-      InstanceSize: c6i.xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0c049a452ca99b458" #c
-      PreProdRegion2Subnet: 
-        - "subnet-080376ce5d1253565" #c
-      ProdRegion1Subnet: 
-        - "subnet-0e3f0e584a4e036dd" #c
-      ProdRegion2Subnet: 
-        - "subnet-0956e4ee7f67981c1" #c
-    SpdrClsN1:
-      Name: spdr-cls-n1
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrClsN2:
-      Name: spdr-cls-n2
-      InstanceSize: c6i.xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrClsC1:
-      Name: spdr-cls-c1
-      InstanceSize: c6i.2xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrClsC2:
-      Name: spdr-cls-c2
-      InstanceSize: c6i.xlarge
-      DiskSize: 100
-      TagValue: cluster
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrSteNe:
-      Name: spdr-ste-ne
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrSteGl:
-      Name: spdr-ste-gl
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrSteMa:
-      Name: spdr-ste-ma
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrSteSe:
-      Name: spdr-ste-se
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrSteFl:
-      Name: spdr-ste-fl
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrStePa:
-      Name: spdr-ste-pa
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0c049a452ca99b458" #c
-      PreProdRegion2Subnet: 
-        - "subnet-080376ce5d1253565" #c
-      ProdRegion1Subnet: 
-        - "subnet-0e3f0e584a4e036dd" #c
-      ProdRegion2Subnet: 
-        - "subnet-0956e4ee7f67981c1" #c
-    SpdrSteSw:
-      Name: spdr-ste-sw
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0c049a452ca99b458" #c
-      PreProdRegion2Subnet: 
-        - "subnet-080376ce5d1253565" #c
-      ProdRegion1Subnet: 
-        - "subnet-0e3f0e584a4e036dd" #c
-      ProdRegion2Subnet: 
-        - "subnet-0956e4ee7f67981c1" #c
-    SpdrSteNw:
-      Name: spdr-ste-nw
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0c049a452ca99b458" #c
-      PreProdRegion2Subnet: 
-        - "subnet-080376ce5d1253565" #c
-      ProdRegion1Subnet: 
-        - "subnet-0e3f0e584a4e036dd" #c
-      ProdRegion2Subnet: 
-        - "subnet-0956e4ee7f67981c1" #c
-    SpdrSteGp:
-      Name: spdr-ste-gp
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrSteMw:
-      Name: spdr-ste-mw
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrSteMt:
-      Name: spdr-ste-mt
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0f3e25ae231ab71b3" #a
-      PreProdRegion2Subnet: 
-        - "subnet-086231b3719357d71" #a
-      ProdRegion1Subnet: 
-        - "subnet-04b28bff308265b84" #a
-      ProdRegion2Subnet: 
-        - "subnet-0978a4a99f0dc87f0" #a
-    SpdrSteSc:
-      Name: spdr-ste-sc
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
-    SpdrSteTx:
-      Name: spdr-ste-tx
-      InstanceSize: c6i.xlarge
-      DiskSize: 200
-      TagValue: site
-      PreProdRegion1Subnet: 
-        - "subnet-0dd8f2abed7077d64" #b
-      PreProdRegion2Subnet: 
-        - "subnet-0de48d941789873ab" #b
-      ProdRegion1Subnet: 
-        - "subnet-0d87c4085ba6c1859" #b
-      ProdRegion2Subnet: 
-        - "subnet-038a6890c603e68d6" #b
+        - "subnet-444"
 
 Conditions:
   cIsDev:
@@ -506,7 +101,7 @@ Conditions:
     !Equals [!Ref AWS::Region, 'us-west-2']
 
 Resources:
-  'Fn::ForEach::RtkServers':
+  'Fn::ForEach::deptServers':
     - ServerName
     - !Ref pServerNames
     - '${ServerName}LaunchTemplate':
@@ -529,19 +124,18 @@ Resources:
                       $background_image = ""
                       $fw_rule_name = "firewall rule enable"
                       $db_script = "./dbscript.bat"
-                      $prometheus_exporter_fw_port = "9182"
-                      $vrt_spider_port = "2110"
-                      $fw_rule_name_vrt = "vrt to spider enable"
-                      $s3_bucket_tool = "s3://hpl-pact-tools-${pTagPactLifecycle}"
-                      $s3_bucket_bgimage = "s3://hpl-background-images-${pTagPactLifecycle}"
+                      $prometheus_exporter_fw_port = "4124"
+                      $vrt_spider_port = "4741"
+                      $s3_bucket_tool = "s3://dept-dept-tools-${pTagdeptLifecycle}"
+                      $s3_bucket_bgimage = "s3://dept-background-images-${pTagdeptLifecycle}"
                       $aws_cli = "C:\Program Files\Amazon\AWSCLIV2\aws.exe"
                       $base_dir = "C:\Scripts"
                       $devops_tool_dir = "C:\DevOps\Tools\"
-                      $production_account_id = "034543456060"
-                      $preprod_account_id = "226939427377"
-                      $test_account_id = "120885424557"
-                      $domain = ".bullseye.com"
-                      $domain_part = "bullseye.com"
+                      $production_account_id = "1111"
+                      $preprod_account_id = "1111"
+                      $test_account_id = "11111"
+                      $domain = ".eye.com"
+                      $domain_part = "eye.com"
                       $alias = "${HOSTNAME}-${ENVIRONMENT_NAME}-${REGION}"
                       $hostname = "${HOSTNAME}"
                       $hosted_zone_id = "${HOSTED_ZONE_ID}"
@@ -561,7 +155,7 @@ Resources:
                           {
                             "Action": "UPSERT",
                             "ResourceRecordSet": {
-                              "Name": "test1.bullseye.com",
+                              "Name": "test1.eye.com",
                               "Type": "A",
                               "TTL": 300,
                               "ResourceRecords": [
@@ -582,11 +176,11 @@ Resources:
                           {
                             "Action": "UPSERT",
                             "ResourceRecordSet": {
-                              "Name": "test1.preprod.us-east-1.bullseye.com",
+                              "Name": "test1.preprod.us-east-1.eye.com",
                               "Type": "A",
                               "AliasTarget": {
                                 "HostedZoneId": "xxxxFL5HAxxxx",
-                                "DNSName": "spdr-net-dev.bullseye.com	",
+                                "DNSName": "acdr-net-dev.eye.com	",
                                 "EvaluateTargetHealth": false
                               }
                             }
@@ -711,37 +305,37 @@ Resources:
                       & "$aws_cli" route53 change-resource-record-sets --hosted-zone-id ${HOSTED_ZONE_ID} --change-batch file://$base_dir\dns-alias-record.json
                       sleep 300
                       $recorddns2json = $recorddnsinfo | ConvertFrom-Json
-                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "spdr-pxy-ctrl.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "acdr-pxy-ctrl.eye.com"
                       $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.HostedZoneId = "$hosted_zone_id"
-                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "spdr-net-ctrl.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "acdr-net-ctrl.eye.com"
                       $recorddns2json | ConvertTo-Json -Depth 10 | Set-Content -Path "dns-alias-record.json"
                       & "$aws_cli" route53 change-resource-record-sets --hosted-zone-id ${HOSTED_ZONE_ID} --change-batch file://$base_dir\dns-alias-record.json
                       sleep 300
                       $recorddns2json = $recorddnsinfo | ConvertFrom-Json
-                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "spdr-pxy-east.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "acdr-pxy-east.eye.com"
                       $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.HostedZoneId = "$hosted_zone_id"
-                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "spdr-net-east.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "acdr-net-east.eye.com"
                       $recorddns2json | ConvertTo-Json -Depth 10 | Set-Content -Path "dns-alias-record.json"
                       & "$aws_cli" route53 change-resource-record-sets --hosted-zone-id ${HOSTED_ZONE_ID} --change-batch file://$base_dir\dns-alias-record.json
                       sleep 300
                       $recorddns2json = $recorddnsinfo | ConvertFrom-Json
-                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "spdr-pxy-west.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "acdr-pxy-west.eye.com"
                       $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.HostedZoneId = "$hosted_zone_id"
-                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "spdr-net-west.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "acdr-net-west.eye.com"
                       $recorddns2json | ConvertTo-Json -Depth 10 | Set-Content -Path "dns-alias-record.json"
                       & "$aws_cli" route53 change-resource-record-sets --hosted-zone-id ${HOSTED_ZONE_ID} --change-batch file://$base_dir\dns-alias-record.json
                       sleep 300
                       $recorddns2json = $recorddnsinfo | ConvertFrom-Json
-                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "spdr-pxy-nrth.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "acdr-pxy-nrth.eye.com"
                       $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.HostedZoneId = "$hosted_zone_id"
-                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "spdr-net-nrth.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "acdr-net-nrth.eye.com"
                       $recorddns2json | ConvertTo-Json -Depth 10 | Set-Content -Path "dns-alias-record.json"
                       & "$aws_cli" route53 change-resource-record-sets --hosted-zone-id ${HOSTED_ZONE_ID} --change-batch file://$base_dir\dns-alias-record.json
                       sleep 300
                       $recorddns2json = $recorddnsinfo | ConvertFrom-Json
-                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "spdr-pxy-soth.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.Name = "acdr-pxy-soth.eye.com"
                       $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.HostedZoneId = "$hosted_zone_id"
-                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "spdr-net-soth.bullseye.com"
+                      $recorddns2json.Changes[0].ResourceRecordSet.AliasTarget.DNSName = "acdr-net-soth.eye.com"
                       $recorddns2json | ConvertTo-Json -Depth 10 | Set-Content -Path "dns-alias-record.json"
                       & "$aws_cli" route53 change-resource-record-sets --hosted-zone-id ${HOSTED_ZONE_ID} --change-batch file://$base_dir\dns-alias-record.json
                       
@@ -755,13 +349,13 @@ Resources:
                       #(Get-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\InitializeInstance.ps1).replace('New-WallpaperSetup','echo New-WallpaperSetup') | Set-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\InitializeInstance.ps1
                       #(Get-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\SysprepInstance.ps1).replace('Clear-Wallpaper','echo Clear-Wallpaper') | Set-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\SysprepInstance.ps1
                       Get-DnsClientGlobalSetting
-                      #Set DNS Setting for bullseye.com
+                      #Set DNS Setting for eye.com
 
                       Set-DnsClientGlobalSetting -SuffixSearchList @("$ec2_fqdn","ec2.internal","$domain_part")
-                      #Set-DnsClientGlobalSetting -SuffixSearchList @("${REGION}.ec2-utilities.amazonaws.com","ec2.internal","bullseye.com")
+                      #Set-DnsClientGlobalSetting -SuffixSearchList @("${REGION}.ec2-utilities.amazonaws.com","ec2.internal","eye.com")
                       netsh advfirewall firewall add rule name="ICMP Allow incoming V4" protocol=icmpv4:8,any dir=in action=allow
                       Get-DnsClientGlobalSetting
-                      netsh advfirewall firewall add rule name="HPL Spider" dir=in action=allow protocol=TCP localport=1433,9877,9878,9800-9821,9882-9892
+                      netsh advfirewall firewall add rule name="dept Spider" dir=in action=allow protocol=TCP localport=1433,9877,9878,9800-9821,9882-9892
 
                       
 
@@ -782,7 +376,7 @@ Resources:
                   waitAfterCompletion: forever
                 02-signal-resource:
                   command: !Sub >
-                    cfn-signal.exe -e %ERRORLEVEL% --resource rRTKLaunchTemplate --stack ${AWS::StackName} --region ${AWS::Region}
+                    cfn-signal.exe -e %ERRORLEVEL% --resource rdeptLaunchTemplate --stack ${AWS::StackName} --region ${AWS::Region}
         Properties:
           LaunchTemplateName: !Sub '${ServerName}LaunchTemplate'
           LaunchTemplateData: 
@@ -795,12 +389,12 @@ Resources:
                   VolumeType: gp3
               - DeviceName: /dev/sdb
                 NoDevice: ""
-            KeyName: pm-hpl-infra-windows-server-keypair
+            KeyName: am-dept-infra-windows-server-keypair
             DisableApiStop: true
             DisableApiTermination: true
             ImageId: !Ref pDefaultAMI
             IamInstanceProfile:
-              Name: !Ref rRTKInstanceProfile
+              Name: !Ref rdeptInstanceProfile
             InstanceType: !FindInMap
               - mServers
               - !Ref ServerName
@@ -811,7 +405,7 @@ Resources:
             Monitoring:
               Enabled: true
             SecurityGroupIds:
-              - '{{resolve:ssm:pm-hpl-infra-win-rtk-srv-SecurityGroup}}'
+              - '{{resolve:ssm:am-dept-infra-win-dept-srv-SecurityGroup}}'
             TagSpecifications:
               - ResourceType: instance
                 Tags:
@@ -819,29 +413,29 @@ Resources:
                     Value: !FindInMap [mServers, !Ref ServerName, Name]
                   - Key: Application
                     Value: !Ref 'AWS::StackId'
-                  - Key: "pact:launched-by"
-                    Value: !Ref pTagPactLaunchedBy
-                  - Key: "pact:resource-custodian"
-                    Value: !Ref pTagPactResourceCustodian
-                  - Key: "pact:team-owner"
-                    Value: !Ref pTagPactTeamOwner
-                  - Key: "pact:customer-data"
-                    Value: !Ref pTagPactCustomerData
-                  - Key: "pact:dataclass"
-                    Value: !Ref pTagPactDataclass
-                  - Key: "pact:ec2:os"
+                  - Key: "dept:launched-by"
+                    Value: !Ref pTagdeptLaunchedBy
+                  - Key: "dept:resource-custodian"
+                    Value: !Ref pTagdeptResourceCustodian
+                  - Key: "dept:team-owner"
+                    Value: !Ref pTagdeptTeamOwner
+                  - Key: "dept:customer-data"
+                    Value: !Ref pTagdeptCustomerData
+                  - Key: "dept:dataclass"
+                    Value: !Ref pTagdeptDataclass
+                  - Key: "dept:ec2:os"
                     Value: windows
-                  - Key: "pact:vast-id"
-                    Value: !Ref pTagPactVastId
-                  - Key: "pact:vsad"
-                    Value: !Ref pTagPactVsad
-                  - Key: "pact:purpose"
-                    Value: !Ref pTagPactPurpose     
-                  - Key: "pact:lifecycle"
-                    Value: !Ref pTagPactLifecycle
-                  - Key: "pact:role"
-                    Value: !Ref pTagPactRole
-                  - Key: "pact:server-type"
+                  - Key: "dept:vast-id"
+                    Value: !Ref pTagdeptVastId
+                  - Key: "dept:vsad"
+                    Value: !Ref pTagdeptVsad
+                  - Key: "dept:purpose"
+                    Value: !Ref pTagdeptPurpose     
+                  - Key: "dept:lifecycle"
+                    Value: !Ref pTagdeptLifecycle
+                  - Key: "dept:role"
+                    Value: !Ref pTagdeptRole
+                  - Key: "dept:server-type"
                     Value: !FindInMap [mServers, !Ref ServerName, TagValue]
                   - Key: !FindInMap [amiExcemptTags, !Ref pEnvironment, 45days]
                     Value: exempt
@@ -884,8 +478,8 @@ Resources:
             Version: !GetAtt
               - !Sub '${ServerName}LaunchTemplate'
               - LatestVersionNumber
-          MinSize: !Ref pMinSize
-          MaxSize: !Ref pMaxSize
+          MinSize: !Ref aminSize
+          MaxSize: !Ref amaxSize
           DesiredCapacity: !Ref pDesiredSize
           HealthCheckGracePeriod: 300
           NewInstancesProtectedFromScaleIn: false
@@ -903,10 +497,10 @@ Resources:
           MetricsCollection:
             - Granularity: "1Minute"
               Metrics:
-                - "GroupMinSize"
-                - "GroupMaxSize"
+                - "GrouaminSize"
+                - "GrouamaxSize"
 
-  rRTKLaunchTemplate:
+  rdeptLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Condition: cIsDevOrTest
     Metadata:
@@ -928,16 +522,16 @@ Resources:
                   $prometheus_exporter_fw_port = "9182"
                   $vrt_spider_port = "2110"
                   $fw_rule_name_vrt = "vrt to spider enable"
-                  $s3_bucket_tool = "s3://hpl-pact-tools-${pTagPactLifecycle}"
-                  $s3_bucket_bgimage = "s3://hpl-background-images-${pTagPactLifecycle}"
+                  $s3_bucket_tool = "s3://dept-dept-tools-${pTagdeptLifecycle}"
+                  $s3_bucket_bgimage = "s3://dept-background-images-${pTagdeptLifecycle}"
                   $aws_cli = "C:\Program Files\Amazon\AWSCLIV2\aws.exe"
                   $base_dir = "C:\Scripts"
                   $devops_tool_dir = "C:\DevOps\Tools\"
-                  $production_account_id = "034543456060"
-                  $preprod_account_id = "226939427377"
-                  $test_account_id = "120885424557"
-                  $domain = ".bullseye.com"
-                  $domain_part = "bullseye.com"
+                  $production_account_id = "1111"
+                  $preprod_account_id = "1111"
+                  $test_account_id = "1111"
+                  $domain = ".eye.com"
+                  $domain_part = "eye.com"
                   $hostname = "${HOSTNAME}"
                   $host_qdn = $hostname + $domain
 
@@ -954,7 +548,7 @@ Resources:
                       {
                         "Action": "UPSERT",
                         "ResourceRecordSet": {
-                          "Name": "test1.bullseye.com",
+                          "Name": "test1.eye.com",
                           "Type": "A",
                           "TTL": 300,
                           "ResourceRecords": [
@@ -1086,10 +680,10 @@ Resources:
                   #(Get-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\InitializeInstance.ps1).replace('New-WallpaperSetup','echo New-WallpaperSetup') | Set-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\InitializeInstance.ps1
                   #(Get-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\SysprepInstance.ps1).replace('Clear-Wallpaper','echo Clear-Wallpaper') | Set-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\SysprepInstance.ps1
                   Get-DnsClientGlobalSetting
-                  #Set DNS Setting for bullseye.com
+                  #Set DNS Setting for eye.com
 
                   #Set-DnsClientGlobalSetting -SuffixSearchList @("$ec2_fqdn","ec2.internal","$domain_part")
-                  Set-DnsClientGlobalSetting -SuffixSearchList @("${REGION}.ec2-utilities.amazonaws.com","ec2.internal","bullseye.com")
+                  Set-DnsClientGlobalSetting -SuffixSearchList @("${REGION}.ec2-utilities.amazonaws.com","ec2.internal","eye.com")
                   netsh advfirewall firewall add rule name="ICMP Allow incoming V4" protocol=icmpv4:8,any dir=in action=allow
                   Get-DnsClientGlobalSetting
 
@@ -1098,8 +692,8 @@ Resources:
                   Write-Output "finish userdata."
                 - HOSTNAME: !If
                   - cIsDev
-                  - spdr-net-dev
-                  - spdr-net-qa
+                  - acdr-net-dev
+                  - acdr-net-qa
                   HOSTED_ZONE_ID: !Ref pHostedZoneId
                   ENVIRONMENT_NAME: !Ref pEnvironment
                   REGION: !Ref AWS::Region
@@ -1115,7 +709,7 @@ Resources:
               waitAfterCompletion: forever
             02-signal-resource:
               command: !Sub >
-                cfn-signal.exe -e %ERRORLEVEL% --resource rRTKLaunchTemplate --stack ${AWS::StackName} --region ${AWS::Region}
+                cfn-signal.exe -e %ERRORLEVEL% --resource rdeptLaunchTemplate --stack ${AWS::StackName} --region ${AWS::Region}
     Properties:
       LaunchTemplateName: !Sub ${pProjectName}
       LaunchTemplateData: 
@@ -1130,10 +724,10 @@ Resources:
             NoDevice: ""
         DisableApiStop: true
         DisableApiTermination: true
-        KeyName: pm-hpl-infra-windows-server-keypair
+        KeyName: am-dept-infra-windows-server-keypair
         ImageId: !Ref pDefaultAMI
         IamInstanceProfile:
-          Name: !Ref rRTKInstanceProfile
+          Name: !Ref rdeptInstanceProfile
         InstanceType: !Ref pDefaultInstanceType
         MetadataOptions:
           HttpPutResponseHopLimit: 2
@@ -1141,7 +735,7 @@ Resources:
         Monitoring:
           Enabled: true
         SecurityGroupIds:
-          - '{{resolve:ssm:pm-hpl-infra-win-rtk-srv-SecurityGroup}}'
+          - '{{resolve:ssm:am-dept-infra-win-dept-srv-SecurityGroup}}'
         TagSpecifications:
           - ResourceType: instance
             Tags:
@@ -1149,44 +743,38 @@ Resources:
                 Value: 
                   !If
                     - cIsDev
-                    - spdr-net-dev
-                    - spdr-net-qa
+                    - acdr-net-dev
+                    - acdr-net-qa
               - Key: Application
                 Value: !Ref 'AWS::StackId'
-              - Key: "pact:launched-by"
-                Value: !Ref pTagPactLaunchedBy
-              - Key: "pact:resource-custodian"
-                Value: !Ref pTagPactResourceCustodian
-              - Key: "pact:team-owner"
-                Value: !Ref pTagPactTeamOwner
-              - Key: "pact:customer-data"
-                Value: !Ref pTagPactCustomerData
-              - Key: "pact:dataclass"
-                Value: !Ref pTagPactDataclass
-              - Key: "pact:ec2:os"
+              - Key: "dept:launched-by"
+                Value: !Ref pTagdeptLaunchedBy
+              - Key: "dept:resource-custodian"
+                Value: !Ref pTagdeptResourceCustodian
+              - Key: "dept:team-owner"
+                Value: !Ref pTagdeptTeamOwner
+              - Key: "dept:customer-data"
+                Value: !Ref pTagdeptCustomerData
+              - Key: "dept:dataclass"
+                Value: !Ref pTagdeptDataclass
+              - Key: "dept:ec2:os"
                 Value: windows
-              - Key: "pact:vast-id"
-                Value: !Ref pTagPactVastId
-              - Key: "pact:vsad"
-                Value: !Ref pTagPactVsad
-              - Key: "pact:purpose"
-                Value: !Ref pTagPactPurpose     
-              - Key: "pact:lifecycle"
-                Value: !Ref pTagPactLifecycle
-              - Key: "pact:role"
-                Value: !Ref pTagPactRole
-              - Key: "pact:server-type"
-                Value: !Ref pTagPactServerType
+              - Key: "dept:vast-id"
+                Value: !Ref pTagdeptVastId
+              - Key: "dept:vsad"
+                Value: !Ref pTagdeptVsad
+              - Key: "dept:purpose"
+                Value: !Ref pTagdeptPurpose     
+              - Key: "dept:lifecycle"
+                Value: !Ref pTagdeptLifecycle
+              - Key: "dept:role"
+                Value: !Ref pTagdeptRole
+              - Key: "dept:server-type"
+                Value: !Ref pTagdeptServerType
               - Key: !FindInMap [amiExcemptTags, !Ref pEnvironment, 45days]
                 Value: exempt
-              - Key: !FindInMap [amiExcemptTags, !Ref pEnvironment, 90days]
-                Value: exempt
-              - Key: !FindInMap [amiExcemptTags, !Ref pEnvironment, 120days]
-                Value: exempt
-              - Key: !FindInMap [amiExcemptTags, !Ref pEnvironment, 135days]
-                Value: exempt
               - Key: "PatchGroup"
-                Value: !Ref pTagPactServerType
+                Value: !Ref pTagdeptServerType
           - ResourceType: volume
             Tags:
               - Key: Name
@@ -1198,23 +786,23 @@ Resources:
         UserData: 
           Fn::Base64: !Sub 
             <script>
-            cfn-init.exe -v -s ${AWS::StackId} -r rRTKLaunchTemplate --configsets ascending --region ${AWS::Region}
+            cfn-init.exe -v -s ${AWS::StackId} -r rdeptLaunchTemplate --configsets ascending --region ${AWS::Region}
             </script>
     CreationPolicy:
       ResourceSignal:
         Count: '1'
         Timeout: PT30M
 
-  rRTKInstanceASG:
+  rdeptInstanceASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     Condition: cIsDevOrTest
     Properties:
       AutoScalingGroupName: !Sub ${pProjectName}-asg
       LaunchTemplate:
-        LaunchTemplateId: !Ref rRTKLaunchTemplate
-        Version: !GetAtt rRTKLaunchTemplate.LatestVersionNumber
-      MinSize: !Ref pMinSize
-      MaxSize: !Ref pMaxSize
+        LaunchTemplateId: !Ref rdeptLaunchTemplate
+        Version: !GetAtt rdeptLaunchTemplate.LatestVersionNumber
+      MinSize: !Ref aminSize
+      MaxSize: !Ref amaxSize
       DesiredCapacity: !Ref pDesiredSize
       HealthCheckGracePeriod: 300
       NewInstancesProtectedFromScaleIn: false
@@ -1222,17 +810,17 @@ Resources:
       MetricsCollection:
         - Granularity: "1Minute"
           Metrics:
-            - "GroupMinSize"
-            - "GroupMaxSize"
+            - "GrouaminSize"
+            - "GrouamaxSize"
     
-  rRTKInstanceProfile:
+  rdeptInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
-        - !Sub ${rRTKInstanceRole}
-    DependsOn: rRTKInstanceRole
+        - !Sub ${rdeptInstanceRole}
+    DependsOn: rdeptInstanceRole
 
-  rRTKInstanceRole:
+  rdeptInstanceRole:
     Type: AWS::IAM::Role
     Properties:
       # RoleName: !Sub ${pProjectName}-instance-role
@@ -1244,7 +832,7 @@ Resources:
             Principal:
               Service: ec2.amazonaws.com
         Version: "2012-10-17"
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       ManagedPolicyArns:
         - !Join [ "", ["arn:", Ref: AWS::Partition, ":iam::aws:policy/AmazonSSMManagedInstanceCore"] ]
         - !Join [ "", ["arn:", Ref: AWS::Partition, ":iam::aws:policy/AmazonS3ReadOnlyAccess"] ]
@@ -1295,14 +883,14 @@ Resources:
                   - s3:PutObject
                   - s3:PutObjectAcl
                 Resource: 
-                  - arn:aws:s3:::hpl-deployment-files
-                  - arn:aws:s3:::hpl-deployment-files/*
-                  - arn:aws:s3:::pm-hpl-application-us-east-1
-                  - arn:aws:s3:::pm-hpl-application-us-east-1/*
-                  - !Sub arn:aws:s3:::hpl-pact-tools-${pTagPactLifecycle}
-                  - !Sub arn:aws:s3:::hpl-pact-tools-${pTagPactLifecycle}/*
-                  - !Sub arn:aws:s3:::hpl-background-images-${pTagPactLifecycle}
-                  - !Sub arn:aws:s3:::hpl-background-images-${pTagPactLifecycle}/*
+                  - arn:aws:s3:::dept-deployment-files
+                  - arn:aws:s3:::dept-deployment-files/*
+                  - arn:aws:s3:::am-dept-application-us-east-1
+                  - arn:aws:s3:::am-dept-application-us-east-1/*
+                  - !Sub arn:aws:s3:::dept-dept-tools-${pTagdeptLifecycle}
+                  - !Sub arn:aws:s3:::dept-dept-tools-${pTagdeptLifecycle}/*
+                  - !Sub arn:aws:s3:::dept-background-images-${pTagdeptLifecycle}
+                  - !Sub arn:aws:s3:::dept-background-images-${pTagdeptLifecycle}/*
         -
           PolicyName: "AllowRoute53Access"
           PolicyDocument:

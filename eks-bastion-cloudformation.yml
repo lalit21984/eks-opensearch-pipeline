@@ -37,31 +37,31 @@ Parameters:
   pEnvironment:
     Type: String
 ### Tag Parameters ################
-  pTagPactCustomerData:
+  pTagdeptCustomerData:
     Type: String
-  pTagPactDataclass:
+  pTagdeptDataclass:
     Type: String
-  pTagPactLaunchedBy:
+  pTagdeptLaunchedBy:
     Type: String
-  pTagPactLifecycle:
+  pTagdeptLifecycle:
     Type: String
-  pTagPactPurpose:
+  pTagdeptPurpose:
     Type: String
-  pTagPactResourceCustodian:
+  pTagdeptResourceCustodian:
     Type: String
-  pTagPactTeamOwner:
+  pTagdeptTeamOwner:
     Type: String
-  pTagPactVastId:
+  pTagdeptVastId:
     Type: String
-  pTagPactVsad:
+  pTagdeptVsad:
     Type: String
-  pTagPactRole:
+  pTagdeptRole:
     Type: String
-  pTagPactEc2Ami90Days:
+  pTagdeptEc2Ami90Days:
     Type: String
-  pTagPactEc2Ami120Days:
+  pTagdeptEc2Ami120Days:
     Type: String
-  pTagPactEc2Ami135Days:
+  pTagdeptEc2Ami135Days:
     Type: String
 
 Mappings:
@@ -138,14 +138,14 @@ Resources:
                   $fw_rule_name = "firewall rule enable"
                   $db_script = "./dbscript.bat"
                   $prometheus_exporter_fw_port = "9182"
-                  $s3_bucket_tool = "s3://hpl-pact-tools-${pTagPactLifecycle}"
-                  $s3_bucket_bgimage = "s3://hpl-background-images-${pTagPactLifecycle}"
+                  $s3_bucket_tool = "s3://hpl-dept-tools-${pTagdeptLifecycle}"
+                  $s3_bucket_bgimage = "s3://hpl-background-images-${pTagdeptLifecycle}"
                   $aws_cli = "C:\Program Files\Amazon\AWSCLIV2\aws.exe"
                   $base_dir = "C:\Scripts"
                   $devops_tool_dir = "C:\DevOps\Tools\"
                   $production_account_id = "034543456060"
                   $preprod_account_id = "226939427377"
-                  $domain = ".bullseye.com"
+                  $domain = ".eye.com"
                   $alias = "${HOSTNAME}-${ENVIRONMENT_NAME}-${REGION}"
                   $hostname  = "${HOSTNAME}"
                   $hosted_zone_id = "${HOSTED_ZONE_ID}"
@@ -164,7 +164,7 @@ Resources:
                       {
                         "Action": "UPSERT",
                         "ResourceRecordSet": {
-                          "Name": "test1.bullseye.com",
+                          "Name": "test1.eye.com",
                           "Type": "A",
                           "TTL": 300,
                           "ResourceRecords": [
@@ -185,11 +185,11 @@ Resources:
                       {
                         "Action": "UPSERT",
                         "ResourceRecordSet": {
-                          "Name": "test1.preprod.us-east-1.bullseye.com",
+                          "Name": "test1.preprod.us-east-1.eye.com",
                           "Type": "A",
                           "AliasTarget": {
                             "HostedZoneId": "xxxxFL5HAxxxx",
-                            "DNSName": "spdr-net-dev.bullseye.com	",
+                            "DNSName": "spdr-net-dev.eye.com	",
                             "EvaluateTargetHealth": false
                           }
                         }
@@ -266,10 +266,10 @@ Resources:
                   } 
                   else{
                     Write-Output "set backgroup image none prod"
-                    # set-itemproperty -path "HKCU:Control Panel\Desktop" -name WallPaper -value "$base_dir\verizon-black-logo.jpg"
-                    # Copy-Item "$base_dir\verizon-black-logo.jpg" -Destination "C:\Users\Administrator\AppData\Local\Ec2Wallpaper_Info.jpg"
-                    # Copy-Item "$base_dir\verizon-black-logo.jpg" -Destination "C:\Users\Administrator\AppData\Local\Ec2Wallpaper.jpg"
-                    (Get-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Module\Scripts\Set-Wallpaper.ps1).replace('SetWallpaper($customWallpaperPath)', "SetWallpaper('$base_dir\verizon-black-logo.jpg')") | Set-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Module\Scripts\Set-Wallpaper.ps1
+                    # set-itemproperty -path "HKCU:Control Panel\Desktop" -name WallPaper -value "$base_dir\abc-black-logo.jpg"
+                    # Copy-Item "$base_dir\abc-black-logo.jpg" -Destination "C:\Users\Administrator\AppData\Local\Ec2Wallpaper_Info.jpg"
+                    # Copy-Item "$base_dir\abc-black-logo.jpg" -Destination "C:\Users\Administrator\AppData\Local\Ec2Wallpaper.jpg"
+                    (Get-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Module\Scripts\Set-Wallpaper.ps1).replace('SetWallpaper($customWallpaperPath)', "SetWallpaper('$base_dir\abc-black-logo.jpg')") | Set-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Module\Scripts\Set-Wallpaper.ps1
                   }
                   
                   #disable ec2launch set background
@@ -308,7 +308,7 @@ Resources:
                   #(Get-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\SysprepInstance.ps1).replace('Clear-Wallpaper','echo Clear-Wallpaper') | Set-Content C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\SysprepInstance.ps1
                   
                   Get-DnsClientGlobalSetting
-                  Set-DnsClientGlobalSetting -SuffixSearchList @("${REGION}.ec2-utilities.amazonaws.com","ec2.internal","bullseye.com")
+                  Set-DnsClientGlobalSetting -SuffixSearchList @("${REGION}.ec2-utilities.amazonaws.com","ec2.internal","eye.com")
                   netsh advfirewall firewall add rule name="ICMP Allow incoming V4" protocol=icmpv4:8,any dir=in action=allow
                   Get-DnsClientGlobalSetting
                   Write-Output "finish userdata."
@@ -360,28 +360,28 @@ Resources:
                 Value: !Sub ${pProjectName}  
               - Key: Application
                 Value: !Ref 'AWS::StackId'
-              - Key: "pact:launched-by"
-                Value: !Ref pTagPactLaunchedBy
-              - Key: "pact:resource-custodian"
-                Value: !Ref pTagPactResourceCustodian
-              - Key: "pact:team-owner"
-                Value: !Ref pTagPactTeamOwner
-              - Key: "pact:customer-data"
-                Value: !Ref pTagPactCustomerData
-              - Key: "pact:dataclass"
-                Value: !Ref pTagPactDataclass
-              - Key: "pact:ec2:os"
+              - Key: "dept:launched-by"
+                Value: !Ref pTagdeptLaunchedBy
+              - Key: "dept:resource-custodian"
+                Value: !Ref pTagdeptResourceCustodian
+              - Key: "dept:team-owner"
+                Value: !Ref pTagdeptTeamOwner
+              - Key: "dept:customer-data"
+                Value: !Ref pTagdeptCustomerData
+              - Key: "dept:dataclass"
+                Value: !Ref pTagdeptDataclass
+              - Key: "dept:ec2:os"
                 Value: windows
-              - Key: "pact:vast-id"
-                Value: !Ref pTagPactVastId
-              - Key: "pact:vsad"
-                Value: !Ref pTagPactVsad
-              - Key: "pact:purpose"
-                Value: !Ref pTagPactPurpose     
-              - Key: "pact:lifecycle"
-                Value: !Ref pTagPactLifecycle
-              - Key: "pact:role"
-                Value: !Ref pTagPactRole
+              - Key: "dept:vast-id"
+                Value: !Ref pTagdeptVastId
+              - Key: "dept:vsad"
+                Value: !Ref pTagdeptVsad
+              - Key: "dept:purpose"
+                Value: !Ref pTagdeptPurpose     
+              - Key: "dept:lifecycle"
+                Value: !Ref pTagdeptLifecycle
+              - Key: "dept:role"
+                Value: !Ref pTagdeptRole
               - Key: !FindInMap [amiExcemptTags, !Ref pEnvironment, 45days]
                 Value: exempt
               - Key: !FindInMap [amiExcemptTags, !Ref pEnvironment, 90days]
@@ -413,7 +413,7 @@ Resources:
             Principal:
               Service: ec2.amazonaws.com
         Version: "2012-10-17"
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       ManagedPolicyArns:
         - !Join [ "", ["arn:", Ref: AWS::Partition, ":iam::aws:policy/AmazonSSMManagedInstanceCore"] ]
         - !Join [ "", ["arn:", Ref: AWS::Partition, ":iam::aws:policy/AmazonS3ReadOnlyAccess"] ]
@@ -468,10 +468,10 @@ Resources:
                   - arn:aws:s3:::hpl-deployment-files/*
                   - arn:aws:s3:::pm-hpl-application-us-east-1
                   - arn:aws:s3:::pm-hpl-application-us-east-1/*
-                  - !Sub arn:aws:s3:::hpl-pact-tools-${pTagPactLifecycle}
-                  - !Sub arn:aws:s3:::hpl-pact-tools-${pTagPactLifecycle}/*
-                  - !Sub arn:aws:s3:::hpl-background-images-${pTagPactLifecycle}
-                  - !Sub arn:aws:s3:::hpl-background-images-${pTagPactLifecycle}/*
+                  - !Sub arn:aws:s3:::hpl-dept-tools-${pTagdeptLifecycle}
+                  - !Sub arn:aws:s3:::hpl-dept-tools-${pTagdeptLifecycle}/*
+                  - !Sub arn:aws:s3:::hpl-background-images-${pTagdeptLifecycle}
+                  - !Sub arn:aws:s3:::hpl-background-images-${pTagdeptLifecycle}/*
         -
           PolicyName: "AllowRoute53Access"
           PolicyDocument:

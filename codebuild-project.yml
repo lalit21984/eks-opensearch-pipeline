@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CodeBuild Project for environment accounts to configure and deploy EKS Pattern -hpl-cluster
+Description: CodeBuild Project for environment accounts to configure and deploy EKS Pattern -app-cluster
 Parameters:
   pOceanminVcpu:
     Type: String
@@ -87,32 +87,32 @@ Parameters:
     Default: sub-0
   pVpcId:
     Type: String
-  pTagPactCustomerData:
+  pTagabcCustomerData:
     Type: String
-  pTagPactDataclass:
+  pTagabcDataclass:
     Type: String
-  pTagPactLaunchedBy:
+  pTagabcLaunchedBy:
     Type: String
-  pTagPactLifecycle:
+  pTagabcLifecycle:
     Type: String
-  pTagPactPurpose:
+  pTagabcPurpose:
     Type: String
-  pTagPactResourceCustodian:
+  pTagabcResourceCustodian:
     Type: String
-  pTagPactTeamOwner:
+  pTagabcTeamOwner:
     Type: String
-  pTagPactVastId:
+  pTagabcVastId:
     Type: String
-  pTagPactVsad:
+  pTagabcVsad:
     Type: String
-  pTagPactRole:
+  pTagabcRole:
     Type: String
   pEKSClusterSecurityGroup:
     Type: AWS::SSM::Parameter::Value<String>
-    Default: 'pm-hpl-cluster-ClusterSecurityGroup'
+    Default: 'pm-app-cluster-ClusterSecurityGroup'
   pRoverSecurityGroup:
     Type: AWS::SSM::Parameter::Value<String>
-    Default: 'pm-hpl-cluster-Rover-Sg'
+    Default: 'pm-app-cluster-Rover-Sg'
   pSpotInstToken:
     Description: The API Token for Spot.io
     NoEcho: 'true'
@@ -124,11 +124,11 @@ Parameters:
     Default: '/sharedservices/us-east-1/spotinst/account-id'
   pDefaultAMI:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: '/sharedservices/us-east-1/pact-amazon-linux-2-eks/ami-id'
+    Default: '/sharedservices/us-east-1/abc-amazon-linux-2-eks/ami-id'
   pBastionHostAMI:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: Bastion Host AMI ID (eg /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2)
-    Default: /sharedservices/us-east-1/pact-amazon-linux-2/ami-id 
+    Default: /sharedservices/us-east-1/abc-amazon-linux-2/ami-id 
 Resources:
   # CodeBuild
   rCodeBuildProject:
@@ -163,7 +163,7 @@ Resources:
               https_proxy: http://${pProxyHost}:8080
               HTTP_PROXY: http://${pProxyHost}:8080
               HTTPS_PROXY: http://${pProxyHost}:8080
-              no_proxy: '169.254.169.254,169.254.170.2,127.0.0.1/8,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.${AWS::Region}.amazonaws.com,sts.${AWS::Region}.amazonaws.com,cloudformation.${AWS::Region}.amazonaws.com,*.bullseye.com'
+              no_proxy: '169.254.169.254,169.254.170.2,127.0.0.1/8,172.16.0.0/12,eye.com,es.amazonaws.com,localhost,.abc.com,.abc.com,.abc.com,.eks.amazonaws.com,.dkr.ecr.${AWS::Region}.amazonaws.com,sts.${AWS::Region}.amazonaws.com,cloudformation.${AWS::Region}.amazonaws.com,*.abc.com'
             exported-variables:
               - http_proxy
               - https_proxy
@@ -206,15 +206,15 @@ Resources:
                 - export LB_SG="{{resolve:ssm:${pProjectName}-Lb-Sg}}"
                 - export ENV="${pEnvironment}"
                 - |
-                  export PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
-                  export PACT_PROXY_PROD=proxy.pact.verizon.com
-                  export PACT_PROXY_PORT=8080
+                  export abc_PROXY_NONPROD=proxy-nonprod.abc.abc.com
+                  export abc_PROXY_PROD=proxy.abc.abc.com
+                  export abc_PROXY_PORT=8080
                   if [ $ENV = "prod" ] || [ $ENV = "depl" ]  ; then
-                    export PACT_PROXY_HOST=$PACT_PROXY_PROD
+                    export abc_PROXY_HOST=$abc_PROXY_PROD
                   else
-                    export PACT_PROXY_HOST=$PACT_PROXY_NONPROD
+                    export abc_PROXY_HOST=$abc_PROXY_NONPROD
                   fi
-                  export PROXY=$PACT_PROXY_HOST:$PACT_PROXY_PORT
+                  export PROXY=$abc_PROXY_HOST:$abc_PROXY_PORT
                 - echo $BASTION_ROLE_ARN
                 - echo $NODE_ROLE_ARN
                 - echo $LB_CTL_ROLE_ARN
@@ -316,10 +316,10 @@ Resources:
                   echo "kubectl applying aws-k8s-cni.yml"
                   cat app/addons/aws-k8s-cni.yml
                   kubectl apply -f app/addons/aws-k8s-cni.yml
-                  echo "Update coredns image to 602401143452.dkr.ecr.$REGION.amazonaws.com/eks/coredns:v1.10.1-eksbuild.6"
-                  kubectl set image deployment.apps/coredns -n kube-system  coredns=602401143452.dkr.ecr.$REGION.amazonaws.com/eks/coredns:v1.10.1-eksbuild.6
-                  echo "Update kube-proxy image to 602401143452.dkr.ecr.$REGION.amazonaws.com/eks/kube-proxy:v1.28.4-minimal-eksbuild.1"
-                  kubectl set image daemonset.apps/kube-proxy -n kube-system kube-proxy=602401143452.dkr.ecr.$REGION.amazonaws.com/eks/kube-proxy:v1.28.4-minimal-eksbuild.1
+                  echo "Update coredns image to 11111.dkr.ecr.$REGION.amazonaws.com/eks/coredns:v1.10.1-eksbuild.6"
+                  kubectl set image deployment.apps/coredns -n kube-system  coredns=11111.dkr.ecr.$REGION.amazonaws.com/eks/coredns:v1.10.1-eksbuild.6
+                  echo "Update kube-proxy image to 11111.dkr.ecr.$REGION.amazonaws.com/eks/kube-proxy:v1.28.4-minimal-eksbuild.1"
+                  kubectl set image daemonset.apps/kube-proxy -n kube-system kube-proxy=1111.dkr.ecr.$REGION.amazonaws.com/eks/kube-proxy:v1.28.4-minimal-eksbuild.1
                 - |
                   cat <<EOF | kubectl apply -f -
                   apiVersion: v1
@@ -330,10 +330,10 @@ Resources:
                   data:
                      HTTP_PROXY: http://$PROXY
                      HTTPS_PROXY: http://$PROXY
-                     NO_PROXY: 10.100.0.0/16,localhost,127.0.0.1,$VPC_CIDR,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,.local,s3.amazonaws.com,.eks.amazonaws.com,.s3.${AWS::Region}.amazonaws.com,api.ecr.${AWS::Region}.amazonaws.com,dkr.ecr.${AWS::Region}.amazonaws.com,ec2.${AWS::Region}.amazonaws.com,*.bullseye.com
+                     NO_PROXY: 10.100.0.0/16,localhost,127.0.0.1,$VPC_CIDR,169.254.169.254,abc.com,es.amazonaws.com,.internal,.local,s3.amazonaws.com,.eks.amazonaws.com,.s3.${AWS::Region}.amazonaws.com,api.ecr.${AWS::Region}.amazonaws.com,dkr.ecr.${AWS::Region}.amazonaws.com,ec2.${AWS::Region}.amazonaws.com,*.abc.com
                      http_proxy: http://$PROXY
                      https_proxy: http://$PROXY
-                     no_proxy: 10.100.0.0/16,localhost,127.0.0.1,$VPC_CIDR,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,.local,s3.amazonaws.com,.eks.amazonaws.com,.s3.${AWS::Region}.amazonaws.com,api.ecr.${AWS::Region}.amazonaws.com,dkr.ecr.${AWS::Region}.amazonaws.com,ec2.${AWS::Region}.amazonaws.com,*.bullseye.com
+                     no_proxy: 10.100.0.0/16,localhost,127.0.0.1,$VPC_CIDR,169.254.169.254,abc.com,es.amazonaws.com,.internal,.local,s3.amazonaws.com,.eks.amazonaws.com,.s3.${AWS::Region}.amazonaws.com,api.ecr.${AWS::Region}.amazonaws.com,dkr.ecr.${AWS::Region}.amazonaws.com,ec2.${AWS::Region}.amazonaws.com,*.abc.com
                   EOF
                 - |
                   cat <<EOF >patch-kube-proxy.yaml
@@ -408,7 +408,7 @@ Resources:
                     -n kube-system \
                     --set clusterName=$EKS_CLUSTER \
                     --set serviceAccount.create=false \
-                    --set image.repository=602401143452.dkr.ecr.$REGION.amazonaws.com/amazon/aws-load-balancer-controller \
+                    --set image.repository=11111.dkr.ecr.$REGION.amazonaws.com/amazon/aws-load-balancer-controller \
                     --set serviceAccount.name=aws-load-balancer-controller
                   fi
                 - echo "Verify that the controller is installed1"
@@ -467,9 +467,9 @@ Resources:
                   fi 
                 - |
                   if [ "${pUseSysdig}" == "Yes" ]; then
-                    export CLUSTER_NAME="$EKS_CLUSTER-${pEnvironment}-${pTagPactVastId}-${pTagPactVsad}"
-                    export VSAD_ID="${pTagPactVsad}"
-                    export VAST_ID="${pTagPactVastId}"
+                    export CLUSTER_NAME="$EKS_CLUSTER-${pEnvironment}-${pTagabcVastId}-${pTagabcVsad}"
+                    export VSAD_ID="${pTagabcVsad}"
+                    export VAST_ID="${pTagabcVastId}"
                     export HTTPPROXY="${pProxyHost}"
                     envsubst < app/sysdig/sysdig.values.yaml > app/sysdig/sysdig.values.output.yaml
                     kubectl create ns sysdig-agent || true
@@ -479,7 +479,7 @@ Resources:
                       --set global.clusterConfig.name=$CLUSTER_NAME \
                       --set global.sysdig.region=us3 \
                       --set global.sysdig.accessKey=$SYSDIG_ACCESS_KEY \
-                      --set agent.sysdig.settings.tags="cluster:hpl-eks-dev-24922-d4jv\,vz-vsadid:d4jv\,vz-vastid:24922" \
+                      --set agent.sysdig.settings.tags="cluster:app-eks-dev-24922-d4jv\,ab-vsadid:d4jv\,ab-vastid:24922" \
                       --set agent.image.tag=12.17.0 \
                       --set nodeAnalyzer.nodeAnalyzer.runtimeScanner.image.tag=1.6.2 sysdig/sysdig-deploy
                   else
@@ -497,14 +497,14 @@ Resources:
                   --set agent.extraEnvs[1].name=HTTPS_PROXY,agent.extraEnvs[1].value=http://$PROXY \
                   --set agent.extraEnvs[2].name=http_proxy,agent.extraEnvs[2].value=http://$PROXY \
                   --set agent.extraEnvs[3].name=https_proxy,agent.extraEnvs[3].value=http://$PROXY \
-                  --set agent.extraEnvs[4].name=NO_PROXY,agent.extraEnvs[4].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
-                  --set agent.extraEnvs[5].name=no_proxy,agent.extraEnvs[5].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
+                  --set agent.extraEnvs[4].name=NO_PROXY,agent.extraEnvs[4].value='10.100.0.0/16\,localhost\,127.0.0.1\,192.168.2.1\,172.16.0.0/12\,169.254.169.254' \
+                  --set agent.extraEnvs[5].name=no_proxy,agent.extraEnvs[5].value='10.100.0.0/16\,localhost\,127.0.0.1\,192.168.2.1\,172.16.0.0/12\,169.254.169.254' \
                   --set clusterReceiver.extraEnvs[0].name=HTTP_PROXY,clusterReceiver.extraEnvs[0].value=http://$PROXY \
                   --set clusterReceiver.extraEnvs[1].name=HTTPS_PROXY,clusterReceiver.extraEnvs[1].value=http://$PROXY \
                   --set clusterReceiver.extraEnvs[2].name=http_proxy,clusterReceiver.extraEnvs[2].value=http://$PROXY \
                   --set clusterReceiver.extraEnvs[3].name=https_proxy,clusterReceiver.extraEnvs[3].value=http://$PROXY \
-                  --set clusterReceiver.extraEnvs[4].name=NO_PROXY,clusterReceiver.extraEnvs[4].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
-                  --set clusterReceiver.extraEnvs[5].name=no_proxy,clusterReceiver.extraEnvs[5].value='10.100.0.0/16\,localhost\,127.0.0.1\,127.9.8.7\,172.16.0.0/12\,169.254.169.254' \
+                  --set clusterReceiver.extraEnvs[4].name=NO_PROXY,clusterReceiver.extraEnvs[4].value='10.100.0.0/16\,localhost\,127.0.0.1\,192.168.2.1\,172.16.0.0/12\,169.254.169.254' \
+                  --set clusterReceiver.extraEnvs[5].name=no_proxy,clusterReceiver.extraEnvs[5].value='10.100.0.0/16\,localhost\,127.0.0.1\,192.168.2.1\,172.16.0.0/12\,169.254.169.254' \
                   --set splunkObservability.realm='us1' \
                   --set splunkObservability.logsEnabled='true' \
                   --set splunkObservability.profilingEnabled='true' \

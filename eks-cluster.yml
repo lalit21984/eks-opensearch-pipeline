@@ -37,7 +37,7 @@ Parameters:
   pBastionHostAMI:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: Bastion Host AMI ID (eg /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2)
-    Default: /sharedservices/us-east-1/pact-amazon-linux-2/ami-id 
+    Default: /sharedservices/us-east-1/dept-amazon-linux-2/ami-id 
   rBastionHostInstanceType:
     Type: String
     Default: t3.medium
@@ -122,7 +122,7 @@ Parameters:
     Default: 'true'
   pDefaultAMI:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: '/sharedservices/us-east-1/pact-amazon-linux-2-eks-1-25/ami-id'
+    Default: '/sharedservices/us-east-1/dept-amazon-linux-2-eks-1-25/ami-id'
   pEKSClusterSecurityGroup:
     #Type: AWS::SSM::Parameter::Value<String>
     Type: String
@@ -147,25 +147,25 @@ Parameters:
     Default: ''
 
 ### Tag Parameters
-  pTagPactCustomerData:
+  pTagdeptCustomerData:
     Type: String
-  pTagPactDataclass:
+  pTagdeptDataclass:
     Type: String
-  pTagPactLaunchedBy:
+  pTagdeptLaunchedBy:
     Type: String
-  pTagPactLifecycle:
+  pTagdeptLifecycle:
     Type: String
-  pTagPactPurpose:
+  pTagdeptPurpose:
     Type: String
-  pTagPactResourceCustodian:
+  pTagdeptResourceCustodian:
     Type: String
-  pTagPactTeamOwner:
+  pTagdeptTeamOwner:
     Type: String
-  pTagPactVastId:
+  pTagdeptVastId:
     Type: String
-  pTagPactVsad:
+  pTagdeptVsad:
     Type: String
-  pTagPactRole:
+  pTagdeptRole:
     Type: String
   pElbArn:
     Type: String
@@ -284,9 +284,9 @@ Resources:
                   Content-Type: text/cloud-boothook; charset="us-ascii"
                     
                   #Set the proxy hostname and port
-                  PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
-                  PACT_PROXY_PROD=proxy.pact.verizon.com
-                  PACT_PROXY_PORT=8080
+                  dept_PROXY_NONPROD=proxy-nonprod.dept.abc.com
+                  dept_PROXY_PROD=proxy.dept.abc.com
+                  dept_PROXY_PORT=8080
 
                   # First, generate a token using the following command.
                   TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
@@ -298,18 +298,18 @@ Resources:
                   INSTANCE_ID=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document/ | jq -r .instanceId`
                   echo INSTANCE_ID: $INSTANCE_ID
 
-                  LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='pact:lifecycle'].Value"  --output text`
+                  LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='dept:lifecycle'].Value"  --output text`
                   echo LIFE_CYCLE_ENV_TYPE: $LIFE_CYCLE_ENV_TYPE
 
                   # Check which proxy endpoint to use
                   echo "Checking which proxy host to use..."
                   if [ $LIFE_CYCLE_ENV_TYPE = "prod" ] || [ $LIFE_CYCLE_ENV_TYPE = "depl" ]  ; then
-                      PACT_PROXY_HOST=$PACT_PROXY_PROD     
+                      dept_PROXY_HOST=$dept_PROXY_PROD     
                   else
-                      PACT_PROXY_HOST=$PACT_PROXY_NONPROD 
+                      dept_PROXY_HOST=$dept_PROXY_NONPROD 
                   fi
                   
-                  PROXY="$PACT_PROXY_HOST:$PACT_PROXY_PORT"
+                  PROXY="$dept_PROXY_HOST:$dept_PROXY_PORT"
 
                   MAC=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/mac/)
                   VPC_CIDR=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-ipv4-cidr-blocks | xargs | tr ' ' ',')
@@ -328,8 +328,8 @@ Resources:
                   https_proxy=http://$PROXY
                   HTTP_PROXY=http://$PROXY
                   HTTPS_PROXY=http://$PROXY
-                  no_proxy=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
-                  NO_PROXY=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
+                  no_proxy=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,eye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.eye.com
+                  NO_PROXY=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,eye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.eye.com
                   EOF
                     
                   #Configure containerd with the proxy
@@ -347,7 +347,7 @@ Resources:
                   #Reload the daemon and restart docker to reflect proxy configuration at launch of instance
                   cloud-init-per instance reload_daemon systemctl daemon-reload 
                   
-                  echo 'search bullseye.com' | sudo tee -a /etc/resolv.conf
+                  echo 'search eye.com' | sudo tee -a /etc/resolv.conf
                   
                   --==BOUNDARY==
                   Content-Type:text/x-shellscript; charset="us-ascii"
@@ -386,29 +386,29 @@ Resources:
                 tagValue: !Sub ${pProjectName}-Node
               - tagKey: Application
                 tagValue: !Ref 'AWS::StackId'
-              - tagKey: "pact:launched-by"
-                tagValue: !Ref pTagPactLaunchedBy
-              - tagKey: "pact:resource-custodian"
-                tagValue: !Ref pTagPactResourceCustodian
-              - tagKey: "pact:team-owner"
-                tagValue: !Ref pTagPactTeamOwner
-              - tagKey: "pact:customer-data"
-                tagValue: !Ref pTagPactCustomerData
-              - tagKey: "pact:dataclass"
-                tagValue: !Ref pTagPactDataclass
-              - tagKey: "pact:ec2:os"
+              - tagKey: "dept:launched-by"
+                tagValue: !Ref pTagdeptLaunchedBy
+              - tagKey: "dept:resource-custodian"
+                tagValue: !Ref pTagdeptResourceCustodian
+              - tagKey: "dept:team-owner"
+                tagValue: !Ref pTagdeptTeamOwner
+              - tagKey: "dept:customer-data"
+                tagValue: !Ref pTagdeptCustomerData
+              - tagKey: "dept:dataclass"
+                tagValue: !Ref pTagdeptDataclass
+              - tagKey: "dept:ec2:os"
                 tagValue: amazon.linux.2
-              - tagKey: "pact:vast-id"
-                tagValue: !Ref pTagPactVastId
-              - tagKey: "pact:vsad"
-                tagValue: !Ref pTagPactVsad
-              - tagKey: "pact:purpose"
-                tagValue: !Ref pTagPactPurpose
-              - tagKey: "pact:lifecycle"
-                tagValue: !Ref pTagPactLifecycle
-              - tagKey: "pact:role"
+              - tagKey: "dept:vast-id"
+                tagValue: !Ref pTagdeptVastId
+              - tagKey: "dept:vsad"
+                tagValue: !Ref pTagdeptVsad
+              - tagKey: "dept:purpose"
+                tagValue: !Ref pTagdeptPurpose
+              - tagKey: "dept:lifecycle"
+                tagValue: !Ref pTagdeptLifecycle
+              - tagKey: "dept:role"
                 tagValue: app
-              - tagKey: "pact:resourcetype"
+              - tagKey: "dept:resourcetype"
                 tagValue: EC2
 
   OceanVNG:
@@ -1046,7 +1046,7 @@ Resources:
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEKSVPCResourceController
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}/ServiceRole
@@ -1075,36 +1075,36 @@ Resources:
             Tags:
               - Key: Name
                 Value: !Sub ${pProjectName}-Node  
-              #- Key: pact:ec2:os
+              #- Key: dept:ec2:os
               #  Value: ami-Linux2
-              #- Key: "pact:customer-data"
+              #- Key: "dept:customer-data"
               #  Value: yes
-              #- Key: pact:role
+              #- Key: dept:role
               #  Value: app
               - Key: Application
                 Value: !Ref 'AWS::StackId'
-              - Key: "pact:launched-by"
-                Value: !Ref pTagPactLaunchedBy
-              - Key: "pact:resource-custodian"
-                Value: !Ref pTagPactResourceCustodian
-              - Key: "pact:team-owner"
-                Value: !Ref pTagPactTeamOwner
-              - Key: "pact:customer-data"
-                Value: !Ref pTagPactCustomerData
-              - Key: "pact:dataclass"
-                Value: !Ref pTagPactDataclass
-              - Key: "pact:ec2:os"
+              - Key: "dept:launched-by"
+                Value: !Ref pTagdeptLaunchedBy
+              - Key: "dept:resource-custodian"
+                Value: !Ref pTagdeptResourceCustodian
+              - Key: "dept:team-owner"
+                Value: !Ref pTagdeptTeamOwner
+              - Key: "dept:customer-data"
+                Value: !Ref pTagdeptCustomerData
+              - Key: "dept:dataclass"
+                Value: !Ref pTagdeptDataclass
+              - Key: "dept:ec2:os"
                 Value: amazon.linux.2 
-              - Key: "pact:vast-id"
-                Value: !Ref pTagPactVastId
-              - Key: "pact:vsad"
-                Value: !Ref pTagPactVsad
-              - Key: "pact:purpose"
-                Value: !Ref pTagPactPurpose     
-              - Key: "pact:lifecycle"
-                Value: !Ref pTagPactLifecycle
-              - Key: "pact:role"
-                Value: !Ref pTagPactRole            
+              - Key: "dept:vast-id"
+                Value: !Ref pTagdeptVastId
+              - Key: "dept:vsad"
+                Value: !Ref pTagdeptVsad
+              - Key: "dept:purpose"
+                Value: !Ref pTagdeptPurpose     
+              - Key: "dept:lifecycle"
+                Value: !Ref pTagdeptLifecycle
+              - Key: "dept:role"
+                Value: !Ref pTagdeptRole            
           - ResourceType: volume
             Tags:
               - Key: Name
@@ -1135,9 +1135,9 @@ Resources:
               Content-Type: text/cloud-boothook; charset="us-ascii"
                     
               #Set the proxy hostname and port
-              PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
-              PACT_PROXY_PROD=proxy.pact.verizon.com
-              PACT_PROXY_PORT=8080
+              dept_PROXY_NONPROD=proxy-nonprod.dept.abc.com
+              dept_PROXY_PROD=proxy.dept.abc.com
+              dept_PROXY_PORT=8080
 
               # First, generate a token using the following command.
               TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
@@ -1149,18 +1149,18 @@ Resources:
               INSTANCE_ID=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document/ | jq -r .instanceId`
               echo INSTANCE_ID: $INSTANCE_ID
 
-              LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='pact:lifecycle'].Value"  --output text`
+              LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='dept:lifecycle'].Value"  --output text`
               echo LIFE_CYCLE_ENV_TYPE: $LIFE_CYCLE_ENV_TYPE
 
               # Check which proxy endpoint to use
               echo "Checking which proxy host to use..."
               if [ $LIFE_CYCLE_ENV_TYPE = "prod" ] || [ $LIFE_CYCLE_ENV_TYPE = "depl" ]  ; then
-                  PACT_PROXY_HOST=$PACT_PROXY_PROD     
+                  dept_PROXY_HOST=$dept_PROXY_PROD     
               else
-                  PACT_PROXY_HOST=$PACT_PROXY_NONPROD 
+                  dept_PROXY_HOST=$dept_PROXY_NONPROD 
               fi
                   
-              PROXY="$PACT_PROXY_HOST:$PACT_PROXY_PORT"
+              PROXY="$dept_PROXY_HOST:$dept_PROXY_PORT"
 
               MAC=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/mac/)
               VPC_CIDR=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/vpc-ipv4-cidr-blocks | xargs | tr ' ' ',')
@@ -1179,8 +1179,8 @@ Resources:
               https_proxy=http://$PROXY
               HTTP_PROXY=http://$PROXY
               HTTPS_PROXY=http://$PROXY
-              no_proxy=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
-              NO_PROXY=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,bullseye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.bullseye.com
+              no_proxy=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,eye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.eye.com
+              NO_PROXY=$VPC_CIDR,localhost,127.0.0.1,169.254.169.254,eye.com,es.amazonaws.com,.internal,s3.amazonaws.com,.s3.$REGION.amazonaws.com,.eks.amazonaws.com,api.ecr.$REGION.amazonaws.com,dkr.ecr.$REGION.amazonaws.com,ec2.$REGION.amazonaws.com,*.eye.com
               EOF
                     
               #Configure containerd with the proxy
@@ -1272,7 +1272,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
       Path: /
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       #RoleName: !Sub ${AWS::StackName}-NodeInstanceRole
       Tags:
         - Key: Name
@@ -1524,7 +1524,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonS3FullAccess
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       RoleName: !Sub ${pProjectName}-casterreference-role
       Tags:
         - Key: Name
@@ -1568,7 +1568,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonSSMManagedInstanceCore
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       #RoleName: !Sub ${pProjectName}-lb-controller
       Tags:
         - Key: Name
@@ -1772,7 +1772,7 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/CloudWatchAgentServerPolicy
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       #RoleName: !Sub ${pProjectName}-bastion-role
       Tags:
         - Key: Name
@@ -1937,36 +1937,36 @@ Resources:
             Tags:
               - Key: Name
                 Value: !Sub ${pProjectName}-${AWS::Region}-Bastion
-              #- Key: pact:ec2:os
+              #- Key: dept:ec2:os
               #  Value: ami-Linux2
-              #- Key: "pact:customer-data"
+              #- Key: "dept:customer-data"
               #  Value: yes
-              #- Key: pact:role
+              #- Key: dept:role
               #  Value: app
               - Key: Application
                 Value: !Ref 'AWS::StackId'
-              - Key: "pact:launched-by"
-                Value: !Ref pTagPactLaunchedBy
-              - Key: "pact:resource-custodian"
-                Value: !Ref pTagPactResourceCustodian
-              - Key: "pact:team-owner"
-                Value: !Ref pTagPactTeamOwner
-              - Key: "pact:customer-data"
-                Value: !Ref pTagPactCustomerData
-              - Key: "pact:dataclass"
-                Value: !Ref pTagPactDataclass
-              - Key: "pact:ec2:os"
+              - Key: "dept:launched-by"
+                Value: !Ref pTagdeptLaunchedBy
+              - Key: "dept:resource-custodian"
+                Value: !Ref pTagdeptResourceCustodian
+              - Key: "dept:team-owner"
+                Value: !Ref pTagdeptTeamOwner
+              - Key: "dept:customer-data"
+                Value: !Ref pTagdeptCustomerData
+              - Key: "dept:dataclass"
+                Value: !Ref pTagdeptDataclass
+              - Key: "dept:ec2:os"
                 Value: amazon.linux.2 
-              - Key: "pact:vast-id"
-                Value: !Ref pTagPactVastId
-              - Key: "pact:vsad"
-                Value: !Ref pTagPactVsad
-              - Key: "pact:purpose"
-                Value: !Ref pTagPactPurpose     
-              - Key: "pact:lifecycle"
-                Value: !Ref pTagPactLifecycle
-              - Key: "pact:role"
-                Value: !Ref pTagPactRole
+              - Key: "dept:vast-id"
+                Value: !Ref pTagdeptVastId
+              - Key: "dept:vsad"
+                Value: !Ref pTagdeptVsad
+              - Key: "dept:purpose"
+                Value: !Ref pTagdeptPurpose     
+              - Key: "dept:lifecycle"
+                Value: !Ref pTagdeptLifecycle
+              - Key: "dept:role"
+                Value: !Ref pTagdeptRole
         UserData: #BastionHost instance
           Fn::Base64:
             !Sub 
@@ -1977,9 +1977,9 @@ Resources:
               export REGION=${AWS::Region}
               export ACCT=${AWS::AccountId}
 
-              PACT_PROXY_NONPROD=proxy-nonprod.pact.verizon.com
-              PACT_PROXY_PROD=proxy.pact.verizon.com
-              PACT_PROXY_PORT=8080
+              dept_PROXY_NONPROD=proxy-nonprod.dept.abc.com
+              dept_PROXY_PROD=proxy.dept.abc.com
+              dept_PROXY_PORT=8080
 
               # First, generate a token using the following command.
               TOKEN=`curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 900"`
@@ -1991,28 +1991,28 @@ Resources:
               INSTANCE_ID=`curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document/ | jq -r .instanceId`
               echo INSTANCE_ID: $INSTANCE_ID
 
-              LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='pact:lifecycle'].Value"  --output text`
+              LIFE_CYCLE_ENV_TYPE=`aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" --query "Tags[?Key=='dept:lifecycle'].Value"  --output text`
               echo LIFE_CYCLE_ENV_TYPE: $LIFE_CYCLE_ENV_TYPE
 
               # Check which proxy endpoint to use
               echo "Checking which proxy host to use..."
               if [ $LIFE_CYCLE_ENV_TYPE = "prod" ] || [ $LIFE_CYCLE_ENV_TYPE = "depl" ]  ; then
-                  PACT_PROXY_HOST=$PACT_PROXY_PROD 
+                  dept_PROXY_HOST=$dept_PROXY_PROD 
               else
-                  PACT_PROXY_HOST=$PACT_PROXY_NONPROD  
+                  dept_PROXY_HOST=$dept_PROXY_NONPROD  
               fi
-              export http_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
-              echo "export http_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
-              export https_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
-              echo "export https_proxy=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
-              export HTTP_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
-              echo "export HTTP_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
-              export HTTPS_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT
-              echo "export HTTPS_PROXY=http://$PACT_PROXY_HOST:$PACT_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
-              export no_proxy='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'
-              echo "export no_proxy='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'" >> /etc/profile.d/no_proxy.sh
-              export NO_PROXY='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,localhost,bullseye.com,es.amazonaws.com,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'
-              echo "export NO_PROXY='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,bullseye.com,es.amazonaws.com,localhost,.verizon.com,.vzwcorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.bullseye.com'" >> /etc/profile.d/no_proxy.sh
+              export http_proxy=http://$dept_PROXY_HOST:$dept_PROXY_PORT
+              echo "export http_proxy=http://$dept_PROXY_HOST:$dept_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export https_proxy=http://$dept_PROXY_HOST:$dept_PROXY_PORT
+              echo "export https_proxy=http://$dept_PROXY_HOST:$dept_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export HTTP_PROXY=http://$dept_PROXY_HOST:$dept_PROXY_PORT
+              echo "export HTTP_PROXY=http://$dept_PROXY_HOST:$dept_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export HTTPS_PROXY=http://$dept_PROXY_HOST:$dept_PROXY_PORT
+              echo "export HTTPS_PROXY=http://$dept_PROXY_HOST:$dept_PROXY_PORT" >> /etc/profile.d/http_proxy.sh
+              export no_proxy='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,eye.com,es.amazonaws.com,localhost,.abc.com,.abccorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.eye.com'
+              echo "export no_proxy='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,eye.com,es.amazonaws.com,localhost,.abc.com,.abccorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.eye.com'" >> /etc/profile.d/no_proxy.sh
+              export NO_PROXY='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,localhost,eye.com,es.amazonaws.com,.abc.com,.abccorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.eye.com'
+              echo "export NO_PROXY='169.254.169.254,169.254.170.2,127.0.0.1/8,100.64.0.0/16,172.16.0.0/12,eye.com,es.amazonaws.com,localhost,.abc.com,.abccorp.com,.vzbi.com,.eks.amazonaws.com,.dkr.ecr.$REGION.amazonaws.com,sts.$REGION.amazonaws.com,*.eye.com'" >> /etc/profile.d/no_proxy.sh
               source /etc/profile
 
               curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.26.7/2023-08-16/bin/linux/amd64/kubectl
@@ -2254,7 +2254,7 @@ Resources:
     Properties:
       Name: !Sub ${pProjectName}-SuperAdmin-Role
       Type: String
-      Value: !Sub arn:aws:iam::${AWS::AccountId}:role/pact-sso-superadmin-${pEnvironment}
+      Value: !Sub arn:aws:iam::${AWS::AccountId}:role/dept-sso-superadmin-${pEnvironment}
   rSsmParameterLbControllerRole:
     Type: AWS::SSM::Parameter
     Properties:
@@ -2284,7 +2284,7 @@ Resources:
             Principal:
               AWS: !Ref pDeplAccountNumber
         Version: "2012-10-17"
-      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/pact-fed-svcrole-boundary
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/dept-fed-svcrole-boundary
       Policies:
         - PolicyName: crossaccountdepl
           PolicyDocument:
@@ -2315,19 +2315,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${pProjectName}-role-${pEnvironment}-jenkinsxaccount-${AWS::Region}
-        - Key: pact:lifecycle
+        - Key: dept:lifecycle
           Value: !Ref pEnvironment
-        - Key: pact:vsad
-          Value: !Ref pTagPactVsad
-        - Key: pact:vast-id
-          Value: !Ref pTagPactVastId
-        - Key: pact:purpose
+        - Key: dept:vsad
+          Value: !Ref pTagdeptVsad
+        - Key: dept:vast-id
+          Value: !Ref pTagdeptVastId
+        - Key: dept:purpose
           Value: IAM Role for XAccount CodeDeploy From Jenkins
-        - Key: pact:dataclass
-          Value: !Ref pTagPactDataclass
-        - Key: pact:launched-by
-          Value: !Ref pTagPactLaunchedBy
-        - Key: pact:resource-custodian
-          Value: !Ref pTagPactResourceCustodian
-        - Key: pact:team-owner
-          Value: !Ref pTagPactTeamOwner
+        - Key: dept:dataclass
+          Value: !Ref pTagdeptDataclass
+        - Key: dept:launched-by
+          Value: !Ref pTagdeptLaunchedBy
+        - Key: dept:resource-custodian
+          Value: !Ref pTagdeptResourceCustodian
+        - Key: dept:team-owner
+          Value: !Ref pTagdeptTeamOwner
