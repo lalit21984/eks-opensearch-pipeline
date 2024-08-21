@@ -7,27 +7,27 @@
     {
         "ParameterKey": "pSharedDeplAccountNumber",
         "ParameterValue": "/accounts/SharedServices/Depl/id",
-        "ResolvedValue": "831627161242"
+        "ResolvedValue": "121234"
     },
     {
         "ParameterKey": "pDevAccountNumber",
         "ParameterValue": "/accounts/dev/id",
-        "ResolvedValue": "773785788626"
+        "ResolvedValue": "12345"
     },
     {
-        "ParameterKey": "pMasterAccountNumber",
+        "ParameterKey": "abasterAccountNumber",
         "ParameterValue": "/accounts/Master/id",
-        "ResolvedValue": "286753932272"
+        "ResolvedValue": "12345"
     },
     {
         "ParameterKey": "pRegion1CodePipelineKmsKey",
         "ParameterValue": "/pipelinefactory/codepipeline/region1/kmskeyarn",
-        "ResolvedValue": "arn:aws:kms:us-east-1:735649920229:key/4ec5c655-6ca6-4fbb-a456-cecd1a6f9493"
+        "ResolvedValue": "arn:aws:kms:us-east-1:11111:key/422cd1a6f9493"
     },
     {
         "ParameterKey": "pDeplAccountNumber",
         "ParameterValue": "/accounts/depl/id",
-        "ResolvedValue": "735649920229"
+        "ResolvedValue": "11111"
     },
     {
         "ParameterKey": "pRegion1Name",
@@ -37,26 +37,26 @@
     {
         "ParameterKey": "pSharedProdAccountNumber",
         "ParameterValue": "/accounts/SharedServices/Prod/id",
-        "ResolvedValue": "706695405409"
+        "ResolvedValue": "1111"
     },
     {
         "ParameterKey": "pTestAccountNumber",
         "ParameterValue": "/accounts/test/id",
-        "ResolvedValue": "120885424557"
+        "ResolvedValue": "111"
     },
     {
         "ParameterKey": "pProdAccountNumber",
         "ParameterValue": "/accounts/prod/id",
-        "ResolvedValue": "034543456060"
+        "ResolvedValue": "1111"
     },
     {
         "ParameterKey": "pProduct",
-        "ParameterValue": "pm-hpl-windows-patching"
+        "ParameterValue": "ab-app-windows-patching"
     },
     {
         "ParameterKey": "pRegion1CodePipelineArtifactBucket",
         "ParameterValue": "/pipelinefactory/codepipeline/region1/s3bucket",
-        "ResolvedValue": "pact-pdi-hpl-codepipeline-735649920229-us-east-1"
+        "ResolvedValue": "pact-pdi-app-codepipeline-1111-us-east-1"
     },
     {
         "ParameterKey": "pCodePipelineServiceRole",
@@ -66,11 +66,11 @@
     {
         "ParameterKey": "pPreProdAccountNumber",
         "ParameterValue": "/accounts/preprod/id",
-        "ResolvedValue": "226939427377"
+        "ResolvedValue": "1111"
     },
     {
         "ParameterKey": "pTeam",
-        "ParameterValue": "pact-pdi-hpl"
+        "ParameterValue": "pact-pdi-app"
     },
     {
         "ParameterKey": "pCodeBuildRole",
