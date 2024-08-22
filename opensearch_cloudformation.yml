@@ -192,8 +192,8 @@ Resources:
           CidrIp: 0.0.0.0/0
           Description: "Allow HTTPS Outbound"
         - IpProtocol: tcp
-          FromPort: 1024
-          ToPort: 65535
+          FromPort: 1000
+          ToPort: 65520
           CidrIp: 0.0.0.0/0
           Description: "Allow HTTPS Outbound"
       Tags:
